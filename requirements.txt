@@ -1,0 +1,1 @@
+git+https://github.com/sammchardy/python-binance.git@feature/asyncio
