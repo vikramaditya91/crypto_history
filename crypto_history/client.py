@@ -1,19 +1,22 @@
-import crypto_history.core.get_market_data
 from datetime import datetime
 from pprint import pprint
 from .utilities.general_utilities import init_logger
 import logging
+from .core.data_container import ConcreteXArrayFactory, ConcreteBinanceFactory
 
 
 async def client_code() -> None:
     init_logger(level=logging.DEBUG)
-    exchange_factory = crypto_history.core.get_market_data.ConcreteBinanceFactory()
+    market_factory = ConcreteBinanceFactory()
+    data_container_factory = ConcreteXArrayFactory()
 
-    market_requester = exchange_factory.create_market_requester()
+    coin_history_container = await data_container_factory.create_container_coin_history(market_factory,
+                                                                                  interval="1d",
+                                                                                  start_str="1 June 2020",
+                                                                                  end_str="4 June 2020",
+                                                                                  limit=500)
+    await coin_history_container.get_filled_container()
 
-    market_operations = exchange_factory.create_market_operations(market_requester)
-    market_harmonizer = exchange_factory.create_data_homogenizer(market_operations)
-    all_tickers = await market_harmonizer.get_all_coins()
-    await market_requester.client.session.close()
-    pprint(all_tickers)
+    pprint(all_base_assets)
+    pprint(all_reference_assets)
 

@@ -1,28 +1,38 @@
 from __future__ import annotations
 from ..utilities import crypto_enum
+from binance.client import AsyncClient
+from collections import namedtuple
 from itertools import chain
+from functools import lru_cache
+from abc import ABC, abstractmethod
 import logging
+from collections import UserList
+from dataclasses import dataclass
+from itertools import groupby
 import re
 
 logger = logging.getLogger(__package__)
 
 
-class TypedProperty:
-    def __init__(self, type_of_property, name):
-        self.type_of_property = type_of_property
-        self.name = name
+class TickerPool(UserList):
+    possible_reference_coins = {"bitcoin": ["BTC", "XBT"],
+                                "ethereum": ["ETH"],
+                                "binance": ["BNB"],
+                                "altcoins": ["XRP", "TRX"],
+                                "currency": ["USDT", "USDC", "BUSD", "TUSD",
+                                             "EUR", "PAX", "USDS",
+                                             "TRY", "RUB", "KRW",
+                                             "IDRT", "GBP", "UAH",
+                                             "IDR", "NGN", "ZAR"]}
 
-    def __set__(self, instance, value):
-        instance.__dict__[self.name] = value
+    futures_key_words = ("BEAR", "BULL", "UP", "DOWN")
 
-    def __get__(self, instance, owner):
-        return instance.__dict__[self.name]
+    @abstractmethod
+    def obtain_unique_items(self, *args, **kwargs):
+        pass
 
 
-class Ticker:
-    ticker_name = TypedProperty(str, "ticker_name")
-    price = TypedProperty(float, "price")
-
+class BinanceTickerPool(TickerPool):
     possible_reference_coins = {"bitcoin": ["BTC", "XBT"],
                                 "ethereum": ["ETH"],
                                 "binance": ["BNB"],
@@ -33,21 +43,12 @@ class Ticker:
                                              "IDRT", "GBP", "UAH",
                                              "IDR", "NGN", "ZAR"]}
 
-    def __init__(self, ticker_name, price=None):
-        self.ticker_name = ticker_name
-        self.price = price
+    futures_key_words = ("BEAR", "BULL", "UP", "DOWN")
 
-    def __repr__(self):
-        return f"{self.ticker_name}: {self.price}"
+    def obtain_unique_items(self, attribute_to_isolate: str):
+        grouped_tickers = groupby(self, key=lambda x: getattr(x, attribute_to_isolate))
+        unique_items = []
+        for unique_item, _ in grouped_tickers:
+            unique_items.append(unique_item)
+        return unique_items
 
-    @classmethod
-    def create_ticker_from_binance_item(cls, ticker_item):
-        return cls(ticker_name=ticker_item["symbol"], price=ticker_item["price"])
-
-    @classmethod
-    def get_coin_str_from_ticker(cls, ticker: Ticker) -> str:
-        for reference_coin in chain.from_iterable(cls.possible_reference_coins.values()):
-            if ticker.ticker_name.endswith(reference_coin) is True:
-                return re.sub(f"{reference_coin}(?!.*{reference_coin})", "", ticker.ticker_name)
-        logger.debug(f"Ticker {ticker} is ignored as its reference is not recognized")
-        return crypto_enum.UNKNOWN_REFERENCE_COIN
