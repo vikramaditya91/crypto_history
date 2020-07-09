@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from itertools import groupby
 import re
 
-logger = logging.getLogger(__package__)
+logger = logging.getLogger(__name__)
 
 
 class TickerPool(UserList):

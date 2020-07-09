@@ -1,23 +1,17 @@
 from __future__ import annotations
 import logging
 import asyncio
-import random
-import math
-import ratelimit
 from abc import ABC, abstractmethod
 from datetime import datetime
 from binance.client import Client
 from typing import Union, Optional
 from functools import lru_cache
 from collections import namedtuple
-from binance import enums, client
-from ..utilities import crypto_enum
-from dataclasses import dataclass, make_dataclass
-from pydantic import BaseModel
-from dacite import from_dict
+from binance import enums
+from dataclasses import make_dataclass
 from .tickers import BinanceTickerPool, TickerPool
 from .request import AbstractMarketRequester, BinanceRequester, CoinMarketCapRequester
-logger = logging.getLogger(__package__)
+logger = logging.getLogger(__name__)
 
 
 class StockMarketFactory(ABC):
@@ -151,7 +145,7 @@ class BinanceHomogenizer(AbstractMarketHomogenizer):
     @lru_cache(maxsize=1)
     async def get_all_coins_ticker_objects(self) -> TickerPool:
         all_raw_tickers = await self.market_operator.get_all_raw_tickers()
-        all_raw_tickers = all_raw_tickers[:]
+        all_raw_tickers = all_raw_tickers[50:100]
         gathered_operations = []
         for raw_ticker in all_raw_tickers:
             gathered_operations.append(self.get_ticker_instance(raw_ticker['symbol']))

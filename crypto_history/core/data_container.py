@@ -10,9 +10,9 @@ from abc import ABC, abstractmethod
 from dataclasses import asdict
 from .get_market_data import ConcreteBinanceFactory, StockMarketFactory
 from collections import Iterator
-from ..utilities import general_utilities
+from ..utilities import general_utilities, exceptions
 
-logger = logging.getLogger(__package__)
+logger = logging.getLogger(__name__)
 
 
 class DataContainerFactory(ABC):
@@ -70,10 +70,14 @@ class AbstractCoinHistory(ABC):
         self.end_str = end_str
         self.limit = limit
         self.ticker_pool = ticker_pool
+        self.example_raw_history = None
 
     @abstractmethod
     async def get_filled_container(self):
         pass
+
+    async def initialize_example(self):
+        self.example_raw_history = self.example_raw_history or list(await self._get_raw_history_for_ticker("ETHBTC"))
 
     async def _get_raw_history_for_ticker(self, ticker_symbol: str):
         return await self.market_harmonizer.get_history_for_ticker(ticker=ticker_symbol,
@@ -88,37 +92,60 @@ class AbstractCoinHistory(ABC):
 
 class XArrayCoinHistory(AbstractCoinHistory):
     async def get_depth_of_indices(self):
-        history_example = await self._get_raw_history_for_ticker("ETHBTC")
-        indices = list(map(lambda x: x.open_ts, history_example))
+        await self.initialize_example()
+        indices = list(range(len(list(self.example_raw_history))))
         return indices
 
     async def get_coords_for_data_array(self):
-        base_assets = self.get_set_of_ticker_fields("baseAsset")
-        reference_assets = self.get_set_of_ticker_fields("quoteAsset")
+        base_assets = self.get_set_of_ticker_attributes("baseAsset")
+        reference_assets = self.get_set_of_ticker_attributes("quoteAsset")
         fields = self.market_harmonizer.History._fields
         # TODO Use inheritance to avoid directly accessing private member
-
         return [list(base_assets),
                 list(reference_assets),
                 list(fields),
                 await self.get_depth_of_indices()]
 
-    async def get_filled_container(self):
+    async def initialize_data_array(self):
         coords = await self.get_coords_for_data_array()
-        xr_array = xr.DataArray(None, coords=coords)
-        # FixMe Potential bug when the arrays might not be of the same length
+        return xr.DataArray(None, coords=coords)
+
+    @staticmethod
+    def add_extra_rows_to_bottom(df: pd.DataFrame, empty_rows_to_add: int):
+        new_indices_to_add = list(range(df.index[-1] + 1, df.index[-1] + 1 + empty_rows_to_add))
+        return df.reindex(df.index.to_list() + new_indices_to_add)
+
+
+    @staticmethod
+    def calculate_rows_to_add(df, list_of_standard_history):
+        df_rows, _ = df.shape
+        expected_rows = len(list_of_standard_history)
+        return expected_rows - df_rows
+
+    def get_compatible_df(self, ticker_history):
+        # TODO Assuming that the df is only not filled in the bottom
+        example_standard_history = self.example_raw_history
+        history_df = pd.DataFrame(ticker_history)
+        if history_df.empty:
+            raise exceptions.EmptyDataFrameException
+        rows_to_add = self.calculate_rows_to_add(history_df, example_standard_history)
+        if rows_to_add > 0:
+            history_df = self.add_extra_rows_to_bottom(history_df, rows_to_add)
+        return history_df
+
+    async def get_filled_container(self):
+        xr_array = await self.initialize_data_array()
         historical_data = await self.get_historical_data()
         for (base_asset, reference_asset), ticker_history in historical_data.items():
-            history_df = pd.DataFrame(ticker_history)
-            if history_df.shape == xr_array.shape[:-3:-1]:
-                xr_array.loc[base_asset, reference_asset] = history_df.transpose()
-            elif history_df.shape == (0, 0):
-                logger.warning(f"ticker: {base_asset}:{reference_asset} does not have a history")
-            else:
-                a = 1
+            try:
+                history_df = self.get_compatible_df(ticker_history)
+            except exceptions.EmptyDataFrameException:
+                continue
+            xr_array.loc[base_asset, reference_asset] = history_df.transpose()
+            logger.debug(f"History set in x_array for ticker {base_asset}{reference_asset}")
         return xr_array
 
-    def get_set_of_ticker_fields(self, asset_type: str):
+    def get_set_of_ticker_attributes(self, asset_type: str):
         fields = set()
         for ticker in self.ticker_pool:
             fields.add(getattr(ticker, asset_type))

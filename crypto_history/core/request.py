@@ -2,25 +2,11 @@ import asyncio
 import logging
 from abc import ABC, abstractmethod
 from binance import client
+from datetime import timedelta
+from ..utilities.general_utilities import TokenBucket
 
-logger = logging.getLogger(__package__)
 
-
-class ProducerConsumer:
-    def __init__(self, per_second=None, per_minute=None):
-        self.queue = asyncio.Queue()
-        self.per_second = per_second
-        self.per_minute = per_minute
-
-    async def consumer(self):
-        pass
-
-    async def producer(self):
-        pass
-
-    async def run_tasks(self, *args, **kwargs):
-        pass
-
+logger = logging.getLogger(__name__)
 
 
 class RetryModel:
@@ -37,7 +23,7 @@ class AbstractMarketRequester(ABC):
     def __init__(self):
         self._client = None
         self.retry_strategy_class = RetryModel
-        self.request_queue = asyncio.Queue()
+        self.request_queue = None
 
     async def request(self, method_name: str, *args, **kwargs):
         retry_strategy_state = self.retry_strategy_class()
@@ -68,6 +54,7 @@ class AbstractMarketRequester(ABC):
                                                 **kwargs)
 
     async def _request(self, method_name, *args, **kwargs):
+        await self.request_queue.hold_if_exceeded()
         return await getattr(self._client, method_name)(*args, **kwargs)
 
 
@@ -75,6 +62,7 @@ class BinanceRequester(AbstractMarketRequester):
     def __init__(self):
         super().__init__()
         self._client = client.AsyncClient(api_key="", api_secret="")
+        self.request_queue = TokenBucket(request_limit={timedelta(minutes=1): 500})
 
 
 class CoinMarketCapRequester(AbstractMarketRequester):
