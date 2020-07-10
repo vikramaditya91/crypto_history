@@ -11,10 +11,11 @@ from binance import enums
 from dataclasses import make_dataclass
 from .tickers import BinanceTickerPool, TickerPool
 from .request import AbstractMarketRequester, BinanceRequester, CoinMarketCapRequester
+from ..utilities.general_utilities import AbstractFactory, register_factory
 logger = logging.getLogger(__name__)
 
 
-class StockMarketFactory(ABC):
+class StockMarketFactory(AbstractFactory):
     @abstractmethod
     def create_market_requester(self) -> AbstractMarketRequester:
         pass
@@ -28,6 +29,7 @@ class StockMarketFactory(ABC):
         pass
 
 
+@register_factory("market")
 class ConcreteBinanceFactory(StockMarketFactory):
     def create_market_requester(self) -> BinanceRequester:
         return BinanceRequester()
@@ -39,6 +41,7 @@ class ConcreteBinanceFactory(StockMarketFactory):
         return BinanceHomogenizer(*args, **kwargs)
 
 
+@register_factory("market")
 class ConcreteCoinMarketCapFactory(StockMarketFactory):
     def create_market_requester(self) -> CoinMarketCapRequester:
         return CoinMarketCapRequester()

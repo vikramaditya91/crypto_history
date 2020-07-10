@@ -1,8 +1,9 @@
 import logging
 import asyncio
-import sys
-from datetime import datetime, timedelta
+import re
+from datetime import datetime
 from typing import Dict
+from abc import ABC
 
 
 def init_logger(level=logging.INFO):
@@ -49,8 +50,6 @@ class TokenBucket:
     async def hold_if_exceeded(self):
         await self.check_if_within_limits()
         self._counter += 1
-        # logger.debug(f"Request counter: {self._counter}\t"
-        #              f"Bucket: {self.bucket_list}")
 
     async def check_if_within_limits(self):
         current = datetime.now()
@@ -67,3 +66,35 @@ class TokenBucket:
             self.bucket_list[it] -= 1
         return True
 
+
+class AbstractFactory(ABC):
+    _builders = {}
+
+    @staticmethod
+    def valid_subclass_to_register(class_instance):
+        if re.match("Concrete.*Factory", class_instance.__name__) is None:
+            return False
+        return True
+
+    @staticmethod
+    def get_identifier_string(class_type):
+        matched = re.match("Concrete(.*)Factory", class_type.__name__)
+        return matched.group(1).lower()
+
+    @classmethod
+    def register_builder(cls, factory_type, class_type):
+        assert cls.valid_subclass_to_register(class_type), "Not a valid class to register. Check the name"
+        if factory_type not in cls._builders.keys():
+            cls._builders[factory_type] = {}
+        identifier = cls.get_identifier_string(class_type)
+        cls._builders[factory_type][identifier] = class_type
+
+    @classmethod
+    def get_builders(cls):
+        return cls._builders
+
+
+def register_factory(factory_type):
+    def intermediate(class_type):
+        AbstractFactory.register_builder(factory_type, class_type)
+    return intermediate
