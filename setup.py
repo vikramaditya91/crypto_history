@@ -1,8 +1,26 @@
-from crypto_history.version import __version__
+import codecs
+import os.path as op
 from setuptools import setup
 
 PACKAGE_NAME = "crypto_history"
-VERSION = __version__
+
+
+def read(rel_path):
+    here = op.abspath(op.dirname(__file__))
+    with codecs.open(op.join(here, rel_path), 'r') as fp:
+        return fp.read()
+
+
+def get_version(rel_path):
+    for line in read(rel_path).splitlines():
+        if line.startswith('__version__'):
+            delim = "="
+            return line.split(delim)[-1]
+    else:
+        raise RuntimeError("Unable to find version string.")
+
+
+VERSION = get_version(op.join(op.dirname(__file__), PACKAGE_NAME, "version.py"))
 
 
 setup(
@@ -25,9 +43,10 @@ setup(
     ],
     description=(
         "crypto_history is a python package for extracting history of crypto-currencies from "
-        "various exchanges and presenting them in a data-format of choice"
+        "various exchanges and presenting them ivn a data-format of choice"
     ),
     install_requires=[
+        "markdown",
         'python-binance @ git+ssh://git@github.com/sammchardy/python-binance.git#egg=python-binance-feature/asyncio',
         'xarray'
     ],
