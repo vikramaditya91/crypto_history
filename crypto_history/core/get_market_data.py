@@ -148,7 +148,6 @@ class BinanceHomogenizer(AbstractMarketHomogenizer):
     @lru_cache(maxsize=1)
     async def get_all_coins_ticker_objects(self) -> TickerPool:
         all_raw_tickers = await self.market_operator.get_all_raw_tickers()
-        all_raw_tickers = all_raw_tickers[50:100]
         gathered_operations = []
         for raw_ticker in all_raw_tickers:
             gathered_operations.append(self.get_ticker_instance(raw_ticker['symbol']))
