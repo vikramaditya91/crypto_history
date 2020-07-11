@@ -1,9 +1,11 @@
 import asyncio
 from pprint import pprint
-from crypto_history import class_builders
-
-
+from crypto_history import class_builders, init_logger
+import logging
+from crypto_history.core.get_market_data import ConcreteBinanceFactory
 async def main():
+    a = ConcreteBinanceFactory.__doc__
+    init_logger(level=logging.DEBUG)
     exchange_factory = class_builders.get("market").get("binance")()
     data_container_factory = class_builders.get("data").get("xarray")()
 

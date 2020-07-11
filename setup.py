@@ -29,15 +29,13 @@ setup(
     author_email="vikramaditya91@gmail.com",
     python_requires=">3.6.0",
     classifiers=[
-        "Development Status :: 5 - Production/Debug",
+        "Development Status :: 2 - Pre-Alpha",
         "Environment :: Console",
         "Intended Audience :: Developers",
         "Natural Language :: English",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Topic :: Utilities",
     ],
@@ -45,10 +43,12 @@ setup(
         "crypto_history is a python package for extracting history of crypto-currencies from "
         "various exchanges and presenting them ivn a data-format of choice"
     ),
+    dependency_links=[
+        "https://github.com/vikramaditya91/python-binance/tarball/feature/asyncio-release#egg=python-binance-v0.7.3.b1"
+    ],
     install_requires=[
-        "markdown",
-        'python-binance @ git+ssh://git@github.com/sammchardy/python-binance.git#egg=python-binance-feature/asyncio',
-        'xarray'
+        'python-binance',
+        'xarray',
     ],
     keywords="binance cryptocurrency xarray",
     license="Simplified BSD License",

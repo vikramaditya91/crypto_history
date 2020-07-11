@@ -1,7 +1,7 @@
 import asyncio
 import logging
-from abc import ABC, abstractmethod
-from binance import client
+from binance.client import AsyncClient
+from abc import ABC
 from datetime import timedelta
 from ..utilities.general_utilities import TokenBucket
 
@@ -61,7 +61,7 @@ class AbstractMarketRequester(ABC):
 class BinanceRequester(AbstractMarketRequester):
     def __init__(self):
         super().__init__()
-        self._client = client.AsyncClient(api_key="", api_secret="")
+        self._client = AsyncClient(api_key="", api_secret="")
         self.request_queue = TokenBucket(request_limit={timedelta(minutes=1): 500})
 
 

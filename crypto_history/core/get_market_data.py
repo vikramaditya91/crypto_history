@@ -16,29 +16,67 @@ logger = logging.getLogger(__name__)
 
 
 class StockMarketFactory(AbstractFactory):
+    """
+    Abstract factory to generate factories per exchange
+    """
     @abstractmethod
     def create_market_requester(self) -> AbstractMarketRequester:
+        """
+        Create the low-level market requester instance per exchange
+
+        Returns: AbstractMarketRequester, instance of a market requester
+
+        """
         pass
 
     @abstractmethod
-    def create_market_operations(self, *args, **kwargs) -> AbstractMarketOperations:
+    def create_market_operations(self, market_requester) -> AbstractMarketOperations:
+        """
+        Create the instance of the class to channel the right requests to the low level
+        market requester.
+
+        Args:
+            market_requester: instance of AbstractMarketRequester
+
+        Returns: instance of AbstractMarketOperations
+
+        """
         pass
 
     @abstractmethod
-    def create_data_homogenizer(self, *args, **kwargs) -> AbstractMarketHomogenizer:
+    def create_data_homogenizer(self, market_operations) -> AbstractMarketHomogenizer:
+        """
+        Create an instance of a market homogenizer which is the interface to the market from the
+        outside. It should ensure that the market data from various markets/exchanges
+        which might have different low-level APIs is available in a uniform format.
+
+        Args:
+            market_operations: instance of AbstractMarketOperations
+
+        Returns: AbstractMarketHomogenizer, instance of a market homogenizer
+
+        """
         pass
 
 
 @register_factory("market")
-class ConcreteBinanceFactory(StockMarketFactory):
+class ConcreteBinanceFactory:
+    """Binance's factory"""
+
     def create_market_requester(self) -> BinanceRequester:
+        """
+        Creates the instance for the Binance Requester
+
+        Returns: Instance of BinanceRequester
+
+        """
         return BinanceRequester()
 
-    def create_market_operations(self, *args, **kwargs) -> BinanceMarketOperations:
-        return BinanceMarketOperations(*args, **kwargs)
+    def create_market_operations(self, market_requester) -> BinanceMarketOperations:
+        return BinanceMarketOperations(market_requester)
 
-    def create_data_homogenizer(self, *args, **kwargs) -> BinanceHomogenizer:
-        return BinanceHomogenizer(*args, **kwargs)
+    def create_data_homogenizer(self, market_operations) -> BinanceHomogenizer:
+        return BinanceHomogenizer(market_operations)
 
 
 @register_factory("market")
@@ -46,15 +84,18 @@ class ConcreteCoinMarketCapFactory(StockMarketFactory):
     def create_market_requester(self) -> CoinMarketCapRequester:
         return CoinMarketCapRequester()
 
-    def create_market_operations(self, *args, **kwargs) -> CoinMarketCapMarketOperations:
-        return CoinMarketCapMarketOperations(*args, **kwargs)
+    def create_market_operations(self, market_requester) -> CoinMarketCapMarketOperations:
+        return CoinMarketCapMarketOperations(market_requester)
 
-    def create_data_homogenizer(self, *args, **kwargs) -> CoinMarketCapHomogenizer:
-        return CoinMarketCapHomogenizer(*args, **kwargs)
+    def create_data_homogenizer(self, market_operations) -> CoinMarketCapHomogenizer:
+        return CoinMarketCapHomogenizer(market_operations)
 
 
 class AbstractMarketOperations(ABC):
+    """Abstract MArket Operations"""
     def __init__(self, market_requester):
+        """Init of market operations"""
+
         self.market_requester = market_requester
 
     @abstractmethod
@@ -149,6 +190,7 @@ class BinanceHomogenizer(AbstractMarketHomogenizer):
     async def get_all_coins_ticker_objects(self) -> TickerPool:
         all_raw_tickers = await self.market_operator.get_all_raw_tickers()
         gathered_operations = []
+        all_raw_tickers = all_raw_tickers[10:20]
         for raw_ticker in all_raw_tickers:
             gathered_operations.append(self.get_ticker_instance(raw_ticker['symbol']))
         all_tickers = await asyncio.gather(*gathered_operations, return_exceptions=False)

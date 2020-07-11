@@ -1,6 +1,7 @@
 import logging
 import asyncio
 import re
+import functools
 from datetime import datetime
 from typing import Dict
 from abc import ABC
@@ -56,7 +57,8 @@ class TokenBucket:
         time_passed = current - self.last_check
         self.last_check = current
         for it in range(len(self.bucket_list)):
-            self.bucket_list[it] += time_passed.total_seconds()*10e6 * self.max_requests_list[it] / self.delta_t_list[it]
+            self.bucket_list[it] += time_passed.total_seconds() * 10e6 * self.max_requests_list[it] / self.delta_t_list[
+                it]
             if self.bucket_list[it] > self.max_requests_list[it]:
                 self.bucket_list[it] = self.max_requests_list[it]
             if self.bucket_list[it] < 1:
@@ -95,6 +97,16 @@ class AbstractFactory(ABC):
 
 
 def register_factory(factory_type):
-    def intermediate(class_type):
-        AbstractFactory.register_builder(factory_type, class_type)
-    return intermediate
+    def decorate(decorated_class_type):
+        AbstractFactory.register_builder(factory_type, decorated_class_type)
+
+        class Wrapper:
+            pass
+        Wrapper.__doc__ = decorated_class_type.__doc__
+        Wrapper.__name__ = decorated_class_type.__name__
+        for attribute, func in decorated_class_type.__dict__.items():
+            if callable(decorated_class_type.__dict__[attribute]):
+                setattr(Wrapper, attribute, decorated_class_type.__dict__[attribute])
+        return Wrapper
+    return decorate
+

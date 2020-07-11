@@ -11,6 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 class DataFactory(general_utilities.AbstractFactory):
+    """
+    Generates the factories for the data aggregator
+    """
     @abstractmethod
     def create_coin_history_obtainer(self) -> AbstractCoinHistoryObtainer:
         pass
