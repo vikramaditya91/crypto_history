@@ -41,21 +41,8 @@ def setup(app):
     )
 
 
-# class MyClassDocumenter(ClassDocumenter):
-#     objtype = 'register_factory1'
-#     directivetype = 'class'
-#
-#     @classmethod
-#     def can_document_member(cls, member, membername, isattr, parent):
-#         # print("member is ", member)
-#         # print("register_Factory is ", register_factory1)
-#         return isinstance(member, register_factory1)
-#
-# def setup(app):
-#     app.add_autodocumenter(MyClassDocumenter)
-
-
 # -- General configuration ---------------------------------------------------
+master_doc = 'index'
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
