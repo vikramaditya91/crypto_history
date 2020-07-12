@@ -1,8 +1,6 @@
 Welcome to crypto_history's documentation!
 ==========================================
 
-.. automodule:: crypto_history.core.data_container
-    :members:
 
 .. toctree::
    :maxdepth: 4
