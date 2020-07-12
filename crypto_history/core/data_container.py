@@ -87,7 +87,7 @@ class XArrayCoinHistoryObtainer(AbstractCoinHistoryObtainer):
     async def get_coords_for_data_array(self):
         base_assets = self.get_set_of_ticker_attributes("baseAsset")
         reference_assets = self.get_set_of_ticker_attributes("quoteAsset")
-        fields = self.market_harmonizer.History._fields
+        fields = self.market_harmonizer.HistoryFields._fields
         # TODO Use inheritance to avoid directly accessing private member
         return [list(base_assets),
                 list(reference_assets),

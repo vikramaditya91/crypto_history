@@ -109,4 +109,3 @@ def register_factory(factory_type):
                 setattr(Wrapper, attribute, decorated_class_type.__dict__[attribute])
         return Wrapper
     return decorate
-

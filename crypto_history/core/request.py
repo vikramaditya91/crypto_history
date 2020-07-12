@@ -65,6 +65,6 @@ class BinanceRequester(AbstractMarketRequester):
         self.request_queue = TokenBucket(request_limit={timedelta(minutes=1): 500})
 
 
-class CoinMarketCapRequester(AbstractMarketRequester):
+class SomeOtherExchangeRequester(AbstractMarketRequester):
     pass
 
