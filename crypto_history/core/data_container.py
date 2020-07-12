@@ -16,15 +16,31 @@ class DataFactory(general_utilities.AbstractFactory):
     """
     @abstractmethod
     def create_coin_history_obtainer(self) -> AbstractCoinHistoryObtainer:
+        """
+        Factory for creating the coin history obtainer which is the low-level interface to the market classes
+
+        Returns(AbstractCoinHistoryObtainer): coin history obtainer class instance
+
+        """
         pass
 
     @abstractmethod
     def create_data_container_operations(self) -> AbstractDataContainerOperations:
+        """
+        Factory for creating the data container operations which is the interface
+         for the user to access the stored data
+
+        Returns(AbstractDataContainerOperations): data container operations class
+
+        """
         pass
 
 
 @register_factory("data")
 class ConcreteXArrayFactory(DataFactory):
+    """
+    Factory for generating the factories for generating the
+    """
     async def create_coin_history_obtainer(self, *args, **kwargs):
         coin_history = XArrayCoinHistoryObtainer(*args, **kwargs)
         coin_history.ticker_pool = await coin_history.initialize_ticker_pool()
