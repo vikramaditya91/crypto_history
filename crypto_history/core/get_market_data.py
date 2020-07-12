@@ -25,9 +25,6 @@ class StockMarketFactory(AbstractFactory):
     def create_market_requester() -> AbstractMarketRequester:
         """
         Create the low-level market requester instance per exchange
-
-        Returns: AbstractMarketRequester, instance of a market requester
-
         """
         pass
 
@@ -40,9 +37,6 @@ class StockMarketFactory(AbstractFactory):
 
         Args:
             market_requester(AbstractMarketRequester): instance of AbstractMarketRequester
-
-        Returns: instance of AbstractMarketOperations
-
         """
         pass
 
@@ -56,9 +50,6 @@ class StockMarketFactory(AbstractFactory):
 
         Args:
             market_operations(AbstractMarketOperations): instance of AbstractMarketOperations
-
-        Returns: AbstractMarketHomogenizer, instance of a market homogenizer
-
         """
         pass
 
@@ -72,7 +63,8 @@ class ConcreteBinanceFactory:
         """
         Creates the instance for the Low Level Binance Requester
 
-        Returns: Instance of BinanceRequester
+        Returns:
+             BinanceRequester: Instance of BinanceRequester
 
         """
         return BinanceRequester()
@@ -85,7 +77,8 @@ class ConcreteBinanceFactory:
         Args:
             market_requester(BinanceRequester): BinanceRequester, Low level binance requester
 
-        Returns: Instance of BinanceMarketOperator
+        Returns:
+             BinanceMarketOperations: Instance of BinanceMarketOperator
 
         """
         return BinanceMarketOperations(market_requester)
@@ -98,7 +91,8 @@ class ConcreteBinanceFactory:
         Args:
             market_operations(BinanceMarketOperations): instance of BinanceMarketOperations
 
-        Returns: Instance of BinanceHomogenizer
+        Returns:
+             BinanceHomogenizer: Instance of BinanceHomogenizer
 
         """
         return BinanceHomogenizer(market_operations)
@@ -178,7 +172,8 @@ class BinanceMarketOperations(AbstractMarketOperations):
         Args:
             string_to_match(str): string which should be matched to binance's enum
 
-        Returns: enum object from python-binance
+        Returns:
+             binance.enum: enum object from python-binance
 
         """
         binance_matched_enum = list()
@@ -206,9 +201,10 @@ class BinanceMarketOperations(AbstractMarketOperations):
             limit(int): list of klines
 
 
-        Returns(list): List of snapshots of history.\
-        Each snapshot is a list of collection of OHLCV values.\
-        See details in :class:`.BinanceHomogenizer.HistoryFields`
+        Returns:
+             list: List of snapshots of history.
+             Each snapshot is a list of collection of OHLCV values.
+             See details in :class:`.BinanceHomogenizer.HistoryFields`
 
         """
         # TODO This should probably be moved to the MarketHomogenizer
@@ -233,8 +229,9 @@ class BinanceMarketOperations(AbstractMarketOperations):
         Gets all the tickers available on the binance exchange.
         
 
-        Returns(list): All the raw tickers obtained from the python-binance (:py:mod:`python-binance`)\
-                 In binance, the format of each raw ticker is {"symbol": <>, "price": <>}
+        Returns:
+             list: All the raw tickers obtained from the python-binance (:py:mod:`python-binance`)\
+             In binance, the format of each raw ticker is {"symbol": <>, "price": <>}
 
         """
         return await self.market_requester.request("get_all_tickers")
@@ -246,10 +243,11 @@ class BinanceMarketOperations(AbstractMarketOperations):
         Args:
             symbol(str): symbol of the ticker whose information is desired
 
-        Returns(dict): The raw information of the ticker desired with information where the keys are the
-        baseAsset, precision, quoteAsset, etc.
-        See :meth:`binance.AsyncClient.get_symbol_info` in :py:mod:`python-binance
-        <https://python-binance.readthedocs.io/en/latest/binance.html#binance.client.Client>`
+        Returns:
+             dict: The raw information of the ticker desired with information where the keys are the
+             baseAsset, precision, quoteAsset, etc.
+             See :meth:`binance.AsyncClient.get_symbol_info` in :py:mod:`python-binance
+             <https://python-binance.readthedocs.io/en/latest/binance.html#binance.client.Client>`
 
         """
         return await self.market_requester.request("get_symbol_info",
@@ -288,7 +286,8 @@ class AbstractMarketHomogenizer(ABC):
         Generates the standard/uniform TickerPool object which should be consistent no matter which
         exchange it is coming from
 
-        Returns(TickerPool): TickerPool which contains all the different tickers and holds it in one
+        Returns:
+             TickerPool: TickerPool which contains all the different tickers and holds it in one
 
         """
         pass
@@ -303,7 +302,8 @@ class AbstractMarketHomogenizer(ABC):
             *args: unknown, as it depends on the exchange
             **kwargs: unknown, as it depends on the exchange
 
-        Returns(dataclass): dataclass instance of the symbol info
+        Returns:
+             dataclass: dataclass instance of the symbol info
 
         """
         pass
@@ -317,7 +317,8 @@ class AbstractMarketHomogenizer(ABC):
             *args: unknown, as it depends on the exchange
             **kwargs: unknown, as it depends on the exchange
 
-        Returns(map): map object of history of the ticker
+        Returns:
+             map: map object of history of the ticker
 
         """
         pass
@@ -338,8 +339,9 @@ class BinanceHomogenizer(AbstractMarketHomogenizer):
         Obtains the exchange-independent TickerPool
         from all the tickers/symbols that are available on the exchange
 
-        Returns(TickerPool): All tickers and their information stored in the TickerPool defined in
-        #TODO
+        Returns:
+             TickerPool: All tickers and their information stored in the TickerPool defined in
+        # TODO
 
         """
         all_raw_tickers = await self.market_operator.get_all_raw_tickers()
@@ -358,7 +360,8 @@ class BinanceHomogenizer(AbstractMarketHomogenizer):
         Args:
             symbol_info_dict: dictionary of the raw ticker
 
-        Returns(Ticker): A dataclass instance which holds the symbol information
+        Returns:
+             Ticker: A dataclass instance which holds the symbol information
 
         """
         return make_dataclass("Ticker", fields={k: type(v) for k, v in symbol_info_dict.items()},
@@ -371,7 +374,8 @@ class BinanceHomogenizer(AbstractMarketHomogenizer):
         Args:
             ticker_name(str): ticker name whose standard Ticker dataclass object is desired
 
-        Returns(dataclass): instance of the dataclass of the ticker
+        Returns:
+             dataclass: instance of the dataclass of the ticker
 
         """
         symbol_info_dict = await self.market_operator.get_raw_symbol_info(ticker_name)
@@ -388,7 +392,8 @@ class BinanceHomogenizer(AbstractMarketHomogenizer):
             *args: See the :class:`.BinanceMarketOperator.get_raw_history_for_ticker` for arguments
             **kwargs: See the :class:`.BinanceMarketOperator.get_raw_history_for_ticker` for arguments
 
-        Returns(map): map of the history of the ticker mapped to the HistoryFields namedtuple
+        Returns:
+             map: map of the history of the ticker mapped to the HistoryFields namedtuple
 
         """
         raw_history = await self.market_operator.get_raw_history_for_ticker(*args, **kwargs)

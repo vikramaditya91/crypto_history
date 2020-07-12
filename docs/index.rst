@@ -10,10 +10,11 @@ Welcome to crypto_history's documentation!
 
 .. _source_code:
 .. toctree::
-   :maxdepth: 7
+   :maxdepth: 4
    :caption: Source Code
 
    source_code/market_data
+   source_code/data_container
 
 Indices and tables
 ==================
