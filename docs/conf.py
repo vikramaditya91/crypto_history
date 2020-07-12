@@ -1,6 +1,5 @@
 import sys
 from os import path as op
-from sphinx.ext.autodoc import ClassDocumenter
 
 sys.path.insert(0, op.join(op.dirname(__file__), ".."))
 from crypto_history.version import __version__
