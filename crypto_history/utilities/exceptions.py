@@ -1,0 +1,2 @@
+class EmptyDataFrameException(Exception):
+    pass
