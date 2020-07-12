@@ -44,10 +44,10 @@ setup(
         "various exchanges and presenting them ivn a data-format of choice"
     ),
     dependency_links=[
-        "https://github.com/vikramaditya91/python-binance/tarball/feature/asyncio-release#egg=python-binance-0.7.3.b1"
+        "https://github.com/vikramaditya91/python-binance/tarball/feature/asyncio-release#egg=python-binance-async-0.7.3.b1"
     ],
     install_requires=[
-        'python-binance',
+        'python-binance-async',
         'xarray',
     ],
     keywords="binance cryptocurrency xarray",
