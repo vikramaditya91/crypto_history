@@ -29,7 +29,7 @@ setup(
     author_email="vikramaditya91@gmail.com",
     python_requires=">3.6.0",
     classifiers=[
-        "Development Status :: 2 - Pre-Alpha",
+        "Development Status :: 3 - Alpha",
         "Environment :: Console",
         "Intended Audience :: Developers",
         "Natural Language :: English",
