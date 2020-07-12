@@ -43,7 +43,7 @@ Quick Start
 
 .. code:: bash
 
-    pip install python-binance
+    pip install crypto-history
 
 See :file:`examples/binance_basic.py` for a working example
 
