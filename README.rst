@@ -15,6 +15,10 @@ Welcome to crypto-history
 .. image:: https://img.shields.io/pypi/pyversions/crypto-history.svg
     :target: https://pypi.python.org/pypi/crypto-history
 
+.. image:: https://readthedocs.org/projects/crypto-history/badge/?version=latest
+    :target: https://crypto-history.readthedocs.io/en/latest/?badge=latest
+    :alt: Documentation Status
+
 This is a wrapper on binance and other exchange APIs to aggregate historical information
 in structured tabular formats (such as xarray.DataArray)
 

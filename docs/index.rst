@@ -1,6 +1,7 @@
 Welcome to crypto_history's documentation!
 ==========================================
 
+.. include:: ../README.rst
 
 .. toctree::
    :maxdepth: 4
@@ -13,6 +14,7 @@ Welcome to crypto_history's documentation!
 
    source_code/market_data
    source_code/data_container
+   source_code/utilities
 
 Indices and tables
 ==================

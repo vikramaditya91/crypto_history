@@ -346,7 +346,6 @@ class BinanceHomogenizer(AbstractMarketHomogenizer):
         """
         all_raw_tickers = await self.market_operator.get_all_raw_tickers()
         gathered_operations = []
-        all_raw_tickers = all_raw_tickers[10:20]
         for raw_ticker in all_raw_tickers:
             gathered_operations.append(self.get_ticker_instance(raw_ticker['symbol']))
         all_tickers = await asyncio.gather(*gathered_operations, return_exceptions=False)

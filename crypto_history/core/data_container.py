@@ -339,7 +339,7 @@ class XArrayDataContainerOperations(AbstractDataContainerOperations):
             empty_rows_to_add(int): Number of extra rows that have to be added
 
         Returns:
-             pd.DataFrame: Reindexed pd.DataFrame which has the compatible number of rows
+             pd.DataFrame: Re-indexed pd.DataFrame which has the compatible number of rows
 
         """
         new_indices_to_add = list(range(df.index[-1] + 1, df.index[-1] + 1 + empty_rows_to_add))
