@@ -1,1 +1,1 @@
-# git+https://github.com/vikramaditya91/python-binance.git@feature/asyncio-release
+python-binance @ git+https://github.com/vikramaditya91/python-binance.git@feature/asyncio-release#egg=python-binance-0.7.3.b1
