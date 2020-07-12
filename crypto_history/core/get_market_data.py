@@ -3,7 +3,7 @@ import logging
 import asyncio
 from abc import ABC, abstractmethod
 from datetime import datetime
-from binance.client import Client
+from binance.client import AsyncClient
 from typing import Union, Optional, List, Dict
 from functools import lru_cache
 from collections import namedtuple
@@ -181,7 +181,7 @@ class BinanceMarketOperations(AbstractMarketOperations):
             if getattr(enums, item) == string_to_match:
                 binance_matched_enum.append(item)
         assert len(binance_matched_enum) == 1, f"Multiple Binance enums matched with {string_to_match}"
-        return getattr(Client, binance_matched_enum[0])
+        return getattr(AsyncClient, binance_matched_enum[0])
 
     async def get_raw_history_for_ticker(self,
                                          ticker: Union[str],
