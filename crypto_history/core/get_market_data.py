@@ -330,6 +330,7 @@ class BinanceHomogenizer(AbstractMarketHomogenizer):
                                                  "taker_buy_base_asset_value", "take_buy_quote_asset_value",
                                                  "ignored"])
     """Fields for the named tuple of the OHLCV returned by Binance get_klines_history
+            See Also: https://github.com/binance-exchange/binance-official-api-docs/blob/master/rest-api.md#klinecandlestick-data
             See :meth:`binance.AsyncClient.get_historical_klines` in :py:mod:`python-binance`
     """
 
