@@ -5,6 +5,7 @@ import xarray as xr
 from typing import Union, List
 from datetime import datetime
 from abc import ABC, abstractmethod
+from .tickers import TickerPool
 from .get_market_data import StockMarketFactory
 from ..utilities.general_utilities import register_factory
 from ..utilities import general_utilities, exceptions
@@ -36,9 +37,9 @@ class DataFactory(general_utilities.AbstractFactory):
 class ConcreteXArrayFactory(DataFactory):
     """
     Factory for generating the x-array related factories.
-    XArray is the preferred way of storing multti-dimensional arrays
+    XArray is the preferred way of storing multi-dimensional arrays
     """
-    async def create_coin_history_obtainer(self, *args, **kwargs) -> XArrayCoinHistoryObtainer:
+    def create_coin_history_obtainer(self, *args, **kwargs) -> XArrayCoinHistoryObtainer:
         """
         Initialize the xarray coin history obtainer and return it
 
@@ -51,10 +52,9 @@ class ConcreteXArrayFactory(DataFactory):
 
         """
         coin_history = XArrayCoinHistoryObtainer(*args, **kwargs)
-        coin_history.ticker_pool = await coin_history.get_ticker_pool()
         return coin_history
 
-    async def create_data_container_operations(self, history_obtainer)->XArrayDataContainerOperations:
+    def create_data_container_operations(self, history_obtainer) -> XArrayDataContainerOperations:
         """
         Creates the data container of the XArray that is meant to be accessible to the user
 
@@ -65,9 +65,7 @@ class ConcreteXArrayFactory(DataFactory):
             XArrayDataContainerOperations: initialized instance of the DataContainer
 
         """
-        data_container = XArrayDataContainerOperations(history_obtainer)
-        await data_container.initialize_container()
-        return data_container
+        return XArrayDataContainerOperations(history_obtainer)
 
 
 @register_factory("data")
@@ -92,7 +90,8 @@ class AbstractCoinHistoryObtainer(ABC):
         Generates the coin history obtainer
 
         Args:
-            exchange_factory(StockMarketFactory): instance of the exchange_factory which is responsible for setting the market_homogenizer
+            exchange_factory(StockMarketFactory): instance of the exchange_factory which is responsible for \
+            setting the market_homogenizer
             interval(str): Length of the history of the klines per item
             start_str(str|datetime): duration from which history is necessary
             end_str(str|datetime): duration upto which history is necessary
@@ -137,15 +136,17 @@ class AbstractCoinHistoryObtainer(ABC):
                                                                    end_str=self.end_str,
                                                                    limit=self.limit)
 
-    async def get_ticker_pool(self) -> List:
+    async def get_ticker_pool(self) -> TickerPool:
         """
-        Obtains the ticker pool by access the market homogenizer
+        Obtains the ticker pool by accessing the market homogenizer
 
         Returns:
              TickerPool: The TickerPool filled with all the ticker available to the market/exchange
 
         """
-        return self.ticker_pool or await self.market_harmonizer.get_all_coins_ticker_objects()
+        if self.ticker_pool is None:
+            self.ticker_pool = await self.market_harmonizer.get_all_coins_ticker_objects()
+        return self.ticker_pool
 
 
 class XArrayCoinHistoryObtainer(AbstractCoinHistoryObtainer):
@@ -164,7 +165,7 @@ class XArrayCoinHistoryObtainer(AbstractCoinHistoryObtainer):
         indices = list(range(len(list(example_history))))
         return indices
 
-    async def get_coords_for_data_array(self)->List:
+    async def get_coords_for_data_array(self) -> List:
         """
         Gets the coordinates needed for the x-array.
         The coordinates for the data-array are arranged:
@@ -179,7 +180,7 @@ class XArrayCoinHistoryObtainer(AbstractCoinHistoryObtainer):
         """
         base_assets = await self.get_set_of_ticker_attributes("baseAsset")
         reference_assets = await self.get_set_of_ticker_attributes("quoteAsset")
-        fields = self.market_harmonizer.HistoryFields._fields
+        fields = self.market_harmonizer.get_all_history_fields()
         # TODO Use inheritance to avoid directly accessing private member
         return [list(base_assets),
                 list(reference_assets),
@@ -222,7 +223,7 @@ class XArrayCoinHistoryObtainer(AbstractCoinHistoryObtainer):
 
 class SomeOtherCoinHistoryObtainer(AbstractCoinHistoryObtainer):
     """An example of how another data-containers coin-history obtainer's factory would look like"""
-    def get_filled_container(self):
+    def get_all_inclusive_container(self):
         pass
 
 
@@ -239,14 +240,14 @@ class AbstractDataContainerOperations(ABC):
         self.data_container = None
 
     @abstractmethod
-    async def get_filled_container(self):
+    async def get_all_inclusive_container(self):
         """
         Obtain the filled history of the container
         """
         pass
 
     @abstractmethod
-    def initialize_container(self):
+    def set_coords_dimensions_in_container(self):
         """
         Initialize the container (eg. with null-values) to avoid having
         to reshape the memory which can be processor intensive
@@ -255,17 +256,16 @@ class AbstractDataContainerOperations(ABC):
 
 
 class XArrayDataContainerOperations(AbstractDataContainerOperations):
-    async def initialize_container(self):
+    async def set_coords_dimensions_in_container(self):
         """
         Initialize the xarray container with None values but with the coordinates
         as it helps in the memory allocation
         """
-        if self.data_container is None:
-            coords = await self.history_obtainer.get_coords_for_data_array()
-            dims = ["base_asset", "reference_asset", "item_to_compare", "index_number"]
-            self.data_container = xr.DataArray(None, coords=coords, dims=dims)
+        coords = await self.history_obtainer.get_coords_for_data_array()
+        dims = ["base_asset", "reference_asset", "field", "index_number"]
+        self.data_container = xr.DataArray(None, coords=coords, dims=dims)
 
-    async def get_filled_container(self):
+    async def get_all_inclusive_container(self):
         """
         Populates the container and returns it to the use
 
@@ -274,6 +274,7 @@ class XArrayDataContainerOperations(AbstractDataContainerOperations):
 
         """
         # TODO Avoid populating it every time it is called
+        await self.set_coords_dimensions_in_container()
         await self.populate_container()
         return self.data_container
 
@@ -348,8 +349,8 @@ class XArrayDataContainerOperations(AbstractDataContainerOperations):
 
 class SomeOtherDataContainerOperations(AbstractDataContainerOperations):
     """Example of how another data container operations's factory would look like"""
-    def initialize_container(self):
+    def set_coords_dimensions_in_container(self):
         pass
 
-    def get_filled_container(self):
+    def get_all_inclusive_container(self):
         pass
