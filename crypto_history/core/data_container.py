@@ -2,6 +2,7 @@ from __future__ import annotations
 import logging
 import pandas as pd
 import xarray as xr
+from dataclasses import dataclass, fields
 from typing import Union, List
 from datetime import datetime
 from abc import ABC, abstractmethod
@@ -32,6 +33,13 @@ class DataFactory(general_utilities.AbstractFactory):
         """
         pass
 
+    @abstractmethod
+    def create_data_container_dimensions_manager(self, *args, **kwargs) -> AbstractDimensionsManager:
+        """
+        Factory for managing the coordinates and the dimensions of the data-container
+        """
+        pass
+
 
 @register_factory("data")
 class ConcreteXArrayFactory(DataFactory):
@@ -54,18 +62,22 @@ class ConcreteXArrayFactory(DataFactory):
         coin_history = XArrayCoinHistoryObtainer(*args, **kwargs)
         return coin_history
 
-    def create_data_container_operations(self, history_obtainer) -> XArrayDataContainerOperations:
+    def create_data_container_dimensions_manager(self, *args, **kwargs) -> XArrayDimensionsManager:
+        return XArrayDimensionsManager(*args, **kwargs)
+
+    def create_data_container_operations(self, history_obtainer, dimensions_manager) -> XArrayDataContainerOperations:
         """
         Creates the data container of the XArray that is meant to be accessible to the user
 
         Args:
             history_obtainer (XArrayCoinHistoryObtainer): history obtainer instance
+            dimensions_manager (XArrayDimensionsManager): Manager of the dimensions/coordinates of the XArray
 
         Returns:
             XArrayDataContainerOperations: initialized instance of the DataContainer
 
         """
-        return XArrayDataContainerOperations(history_obtainer)
+        return XArrayDataContainerOperations(history_obtainer, dimensions_manager)
 
 
 @register_factory("data")
@@ -76,6 +88,9 @@ class ConcreteSomeOtherFactory(DataFactory):
 
     def create_data_container_operations(self, *args, **kwargs):
         return SomeOtherDataContainerOperations(*args, **kwargs)
+
+    def create_data_container_dimensions_manager(self, *args, **kwargs):
+        raise NotImplementedError
 
 
 class AbstractCoinHistoryObtainer(ABC):
@@ -124,7 +139,7 @@ class AbstractCoinHistoryObtainer(ABC):
         Gets the raw history for the ticker by using the interface to the market provided by the market homogenizer
 
         Args:
-            ticker_symbol(str): Symbol of the ticker whse history is desired
+            ticker_symbol(str): Symbol of the ticker whose history is desired
 
         Returns:
              map: raw mapped history of the ticker mapped to the HistoryFields instance
@@ -151,60 +166,6 @@ class AbstractCoinHistoryObtainer(ABC):
 
 class XArrayCoinHistoryObtainer(AbstractCoinHistoryObtainer):
     """The x-arrays's coin-history obtainer class"""
-    async def get_depth_of_indices(self):
-        """
-        Obtains the depth of the indices to identify how many time-stamp values
-         each history has available
-
-        Returns:
-             list: The list of indices from 0..n-1
-                     where n corresponds to the number of time-stamps in the history
-
-        """
-        example_history = await self.initialize_example()
-        indices = list(range(len(list(example_history))))
-        return indices
-
-    async def get_coords_for_data_array(self) -> List:
-        """
-        Gets the coordinates needed for the x-array.
-        The coordinates for the data-array are arranged:
-        coord1 => all base assets
-        coord2 => all reference assets
-        coord3 => all fields for each ticker (time stamp, ohlcv values, etc)
-        coord1 => the depths of indices (number of time stamps) (0,1,2,..n-1) where n corresponds to each time stamp
-
-        Returns:
-             list: list of coordinates for the xarray
-
-        """
-        base_assets = await self.get_set_of_ticker_attributes("baseAsset")
-        reference_assets = await self.get_set_of_ticker_attributes("quoteAsset")
-        fields = self.market_harmonizer.get_all_history_fields()
-        # TODO Use inheritance to avoid directly accessing private member
-        return [list(base_assets),
-                list(reference_assets),
-                list(fields),
-                await self.get_depth_of_indices()]
-
-    async def get_set_of_ticker_attributes(self, attribute: str):
-        """
-        Aggregates the set items of the required attribute
-        across the whole history
-
-        Args:
-            attribute: The attribute/key which is the common term \
-            in the history whose values are to be identified
-
-        Returns:
-             set: set of values whose attributes are common
-
-        """
-        values = set()
-        for ticker in await self.get_ticker_pool():
-            values.add(getattr(ticker, attribute))
-        return values
-
     async def get_historical_data_all_coins(self):
         """
         Get the history of all the tickers in the market/exchange
@@ -223,24 +184,106 @@ class XArrayCoinHistoryObtainer(AbstractCoinHistoryObtainer):
 
 class SomeOtherCoinHistoryObtainer(AbstractCoinHistoryObtainer):
     """An example of how another data-containers coin-history obtainer's factory would look like"""
-    def get_all_inclusive_container(self):
+    def get_all_inclusive_container(self, *args, **kwargs):
         pass
+
+
+class AbstractDimensionsManager(ABC):
+    @dataclass
+    class Dimensions:
+        """Class for keeping track of the dimensions of the XArray"""
+        base_asset: list
+        reference_asset: list
+        field: list
+        index_number: list
+
+    """Class responsible for managing the dimensions/coordinates of teh data container"""
+    def __init__(self, coin_history_obtainer):
+        """Initializes the dimensions manager with the coin_history_obtainer"""
+        self.coin_history_obtainer = coin_history_obtainer
+
+
+class XArrayDimensionsManager(AbstractDimensionsManager):
+
+    async def get_depth_of_indices(self):
+        """
+        Obtains the depth of the indices to identify how many time-stamp values
+         each history has available
+
+        Returns:
+             list: The list of indices from 0..n-1
+                     where n corresponds to the number of time-stamps in the history
+
+        """
+        example_history = await self.coin_history_obtainer.initialize_example()
+        indices = list(range(len(list(example_history))))
+        return indices
+
+    async def get_mapped_coords(self):
+        """Returns the mapped coordinates on the dimensions
+        Returns:
+            namedtuple: NamedTuple of the coordinates mapped onto dimensions
+        """
+        coordinates = await self.get_coords_for_data_array()
+        return self.Dimensions(*coordinates)
+
+    async def get_coords_for_data_array(self) -> List:
+        """
+        Gets the coordinates needed for the x-array.
+        The coordinates for the data-array are arranged:
+        coord1 => all base assets
+        coord2 => all reference assets
+        coord3 => all fields for each ticker (time stamp, OHLCV values, etc)
+        coord1 => the depths of indices (number of time stamps) (0,1,2,..n-1) where n corresponds to each time stamp
+
+        Returns:
+             list: list of coordinates for the xarray
+
+        """
+        base_assets = await self.get_set_of_ticker_attributes("baseAsset")
+        reference_assets = await self.get_set_of_ticker_attributes("quoteAsset")
+        types_of_data_per_ts = self.coin_history_obtainer.market_harmonizer.get_all_history_fields()
+        # TODO Use inheritance to avoid directly accessing private member
+        return [list(base_assets),
+                list(reference_assets),
+                list(types_of_data_per_ts),
+                await self.get_depth_of_indices()]
+
+    async def get_set_of_ticker_attributes(self, attribute: str):
+        """
+        Aggregates the set items of the required attribute
+        across the whole history
+
+        Args:
+            attribute: The attribute/key which is the common term \
+            in the history whose values are to be identified
+
+        Returns:
+             set: set of values whose attributes are common
+
+        """
+        values = set()
+        for ticker in await self.coin_history_obtainer.get_ticker_pool():
+            values.add(getattr(ticker, attribute))
+        return values
 
 
 class AbstractDataContainerOperations(ABC):
     """Abstract Base Class for generating the data operations"""
-    def __init__(self, history_obtainer):
+    def __init__(self, history_obtainer, dimensions_manager):
         """
         Initialize the data container operations
 
         Args:
             history_obtainer: instance of the history obtainer
+            dimensions_manager: instance of the responsible class instance for managing dimensions/coordinates
         """
         self.history_obtainer = history_obtainer
+        self.dimensions_manager = dimensions_manager
         self.data_container = None
 
     @abstractmethod
-    async def get_all_inclusive_container(self):
+    async def get_all_inclusive_container(self, *args, **kwargs):
         """
         Obtain the filled history of the container
         """
@@ -256,27 +299,43 @@ class AbstractDataContainerOperations(ABC):
 
 
 class XArrayDataContainerOperations(AbstractDataContainerOperations):
-    async def set_coords_dimensions_in_container(self):
+    async def set_coords_dimensions_in_container(self, dataclass_dimensions_coordinates=None):
         """
         Initialize the xarray container with None values but with the coordinates
         as it helps in the memory allocation
+        Args:
+            dataclass_dimensions_coordinates: dataclass of coordinates/dimensions as the framework for generating \
+            the XArray
         """
-        coords = await self.history_obtainer.get_coords_for_data_array()
-        dims = ["base_asset", "reference_asset", "field", "index_number"]
-        self.data_container = xr.DataArray(None, coords=coords, dims=dims)
+        if dataclass_dimensions_coordinates is None:
+            dataclass_dimensions_coordinates = await self.dimensions_manager.get_mapped_coords()
+        dimensions = [dimension.name for dimension in fields(dataclass_dimensions_coordinates)]
+        coordinates = [getattr(dataclass_dimensions_coordinates, item) for item in dimensions]
+        self.data_container = xr.DataArray(None, coords=coordinates, dims=dimensions)
+
+    async def get_populated_container(self, coord_dimension_dataclass):
+        """
+                Populates the container and returns it to the use
+
+                Args:
+                    coord_dimension_dataclass: coordinates of the XArray
+                Returns:
+                     xr.DataArray: the filled container of information
+
+                """
+        # TODO Avoid populating it every time it is called
+        await self.set_coords_dimensions_in_container(coord_dimension_dataclass)
+        await self.populate_container()
+        return self.data_container
 
     async def get_all_inclusive_container(self):
         """
-        Populates the container and returns it to the use
-
+        Obtains the complete all-encompassing container
         Returns:
-             xr.DatArray: the filled container of information
+            xr.DataArray: the completely filled container
 
         """
-        # TODO Avoid populating it every time it is called
-        await self.set_coords_dimensions_in_container()
-        await self.populate_container()
-        return self.data_container
+        return await self.get_populated_container(coord_dimension_dataclass=None)
 
     async def populate_container(self):
         """
@@ -352,5 +411,5 @@ class SomeOtherDataContainerOperations(AbstractDataContainerOperations):
     def set_coords_dimensions_in_container(self):
         pass
 
-    def get_all_inclusive_container(self):
+    def get_all_inclusive_container(self, *args, **kwargs):
         pass
