@@ -1,5 +1,7 @@
 import asyncio
 import logging
+import time
+from binance import exceptions
 from binance.client import AsyncClient
 from abc import ABC
 from datetime import timedelta
@@ -111,7 +113,35 @@ class BinanceRequester(AbstractMarketRequester):
     def __init__(self):
         super().__init__()
         self._client = AsyncClient(api_key="", api_secret="")
-        self.request_queue = TokenBucket(request_limit={timedelta(minutes=1): 500})
+        self.request_queue = TokenBucket(request_limit={timedelta(minutes=1): 1000})
+
+    async def _request_with_retries(self,
+                                    method_name: str,
+                                    retry_strategy_state=None,
+                                    *args, **kwargs):
+        """
+        Wrapper around the default _request_with_retries to avoid failed requests
+        after too many requests particular to Binance
+        Args:
+            method_name: name of the method to be called on the client
+            retry_strategy_state: RetryModel class instance
+            *args: arguments for the request call
+            **kwargs: keyword arguments for the request call
+
+        Returns:
+            response from the request
+
+        """
+        try:
+            return await super()._request_with_retries(method_name, retry_strategy_state, *args, **kwargs)
+        except exceptions.BinanceAPIException as e:
+            # Error code corresponds to TOO_MANY_REQUESTS in Binance
+            if e.code == -1003:
+                logger.warning(f"Request could not responds as TOO_MANY_REQUESTS. "
+                               f"SYNCHRONOUSLY pausing everything for 30 seconds. Reason {e}")
+                time.sleep(30)
+                return await self._retry(method_name, retry_strategy_state, *args, **kwargs)
+            raise
 
 
 class SomeOtherExchangeRequester(AbstractMarketRequester):

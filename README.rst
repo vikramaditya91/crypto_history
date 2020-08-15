@@ -19,6 +19,10 @@ Welcome to crypto-history
     :target: https://crypto-history.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
 
+.. image:: https://pepy.tech/badge/crypto-history/week
+    :target: https://pepy.tech/badge/crypto-history/week
+    :alt: crypto-history download status per week
+
 This is a wrapper on binance and other exchange APIs to aggregate historical information
 in structured tabular formats (such as xarray.DataArray)
 

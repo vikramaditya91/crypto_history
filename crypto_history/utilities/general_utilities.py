@@ -89,11 +89,14 @@ class TokenBucket:
         time_passed = current - self.last_check
         self.last_check = current
         for it in range(len(self.bucket_list)):
-            self.bucket_list[it] += time_passed.total_seconds() * 10e6 * self.max_requests_list[it] / self.delta_t_list[
-                it]
+            self.bucket_list[it] += \
+                time_passed.total_seconds() * 10e6 *\
+                self.max_requests_list[it] / self.delta_t_list[it]
+
             if self.bucket_list[it] > self.max_requests_list[it]:
                 self.bucket_list[it] = self.max_requests_list[it]
             if self.bucket_list[it] < 1:
+                logger.debug("Requests have exceeded. Waiting for token bucket to fill-up")
                 await asyncio.sleep(self.pause_seconds)
                 if await self._check_if_within_limits() is True:
                     continue
@@ -175,7 +178,7 @@ class RetryModel:
     def retries(self, value):
         if value < 1:
             logger.error("All retries have been consumed")
-            raise ConnectionError
+            raise ConnectionError("All retries have been consumed")
         self._retries = value
 
     async def consume_available_retry(self):
