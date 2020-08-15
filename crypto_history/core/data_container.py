@@ -63,6 +63,12 @@ class ConcreteXArrayFactory(DataFactory):
         return coin_history
 
     def create_data_container_dimensions_manager(self, *args, **kwargs) -> XArrayDimensionsManager:
+        """
+        Creates the Dimensions Manager for the XArray data container
+        Returns:
+            XArrayDimensionsManager: instance of the dimensions manager
+
+        """
         return XArrayDimensionsManager(*args, **kwargs)
 
     def create_data_container_operations(self, history_obtainer, dimensions_manager) -> XArrayDataContainerOperations:
@@ -176,11 +182,9 @@ class XArrayCoinHistoryObtainer(AbstractCoinHistoryObtainer):
         Returns:
             The kline historical data of the combinations
         """
-        tickers_to_capture = self.ticker_pool
-        if base_assets is not None and reference_assets is not None:
-            tickers_to_capture = [ticker for ticker in tickers_to_capture if
-                                  (ticker.baseAsset in base_assets) and
-                                  (ticker.quoteAsset in reference_assets)]
+        tickers_to_capture = [ticker for ticker in self.ticker_pool if
+                              (ticker.baseAsset in base_assets) and
+                              (ticker.quoteAsset in reference_assets)]
         return await self._get_historical_data_relevant_coins(tickers_to_capture)
 
     async def get_all_historical_data(self):
@@ -213,6 +217,8 @@ class SomeOtherCoinHistoryObtainer(AbstractCoinHistoryObtainer):
 
 
 class AbstractDimensionsManager(ABC):
+    """Class responsible for managing the dimensions/coordinates of teh data container"""
+
     @dataclass
     class Dimensions:
         """Class for keeping track of the dimensions of the XArray"""
@@ -221,7 +227,6 @@ class AbstractDimensionsManager(ABC):
         field: List
         index_number: List
 
-    """Class responsible for managing the dimensions/coordinates of teh data container"""
     def __init__(self, coin_history_obtainer):
         """Initializes the dimensions manager with the coin_history_obtainer"""
         self.coin_history_obtainer = coin_history_obtainer
@@ -353,14 +358,14 @@ class XArrayDataContainerOperations(AbstractDataContainerOperations):
 
     async def get_populated_container(self, coord_dimension_dataclass=None):
         """
-                Populates the container and returns it to the use
+        Populates the container and returns it to the use
 
-                Args:
-                    coord_dimension_dataclass: coordinates of the XArray
-                Returns:
-                     xr.DataArray: the filled container of information
+        Args:
+            coord_dimension_dataclass: coordinates of the XArray
+        Returns:
+             xr.DataArray: the filled container of information
 
-                """
+        """
         # TODO Avoid populating it every time it is called
         if coord_dimension_dataclass is None:
             coord_dimension_dataclass = self.dimensions_manager.get_mapped_coords()
