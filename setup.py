@@ -4,11 +4,16 @@ from setuptools import setup
 
 PACKAGE_NAME = "crypto_history"
 
+here = op.abspath(op.dirname(__file__))
+
 
 def read(rel_path):
-    here = op.abspath(op.dirname(__file__))
     with codecs.open(op.join(here, rel_path), 'r') as fp:
         return fp.read()
+
+
+with open(op.join(here, "README.rst"), encoding="utf-8") as fp:
+    README = fp.read()
 
 
 def get_version(rel_path):
@@ -52,5 +57,6 @@ setup(
     ],
     keywords="binance cryptocurrency xarray",
     license="Simplified BSD License",
+    long_description=README,
     version=VERSION,
 )
