@@ -178,7 +178,7 @@ class RetryModel:
     def retries(self, value):
         if value < 1:
             logger.error("All retries have been consumed")
-            raise ConnectionError
+            raise ConnectionError("All retries have been consumed")
         self._retries = value
 
     async def consume_available_retry(self):

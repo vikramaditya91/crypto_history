@@ -166,9 +166,33 @@ class AbstractCoinHistoryObtainer(ABC):
 
 class XArrayCoinHistoryObtainer(AbstractCoinHistoryObtainer):
     """The x-arrays's coin-history obtainer class"""
-    async def get_historical_data_all_coins(self):
+    async def get_historical_data_relevant_coins_from_base_and_reference_assets(self, base_assets, reference_assets):
+        """
+        Get the historical data for the combination of base and reference assets
+        Args:
+            base_assets (List['str']): list of all base assets
+            reference_assets (List['str']): list of all reference assets
+
+        Returns:
+            The kline historical data of the combinations
+        """
+        tickers_to_capture = self.ticker_pool
+        if base_assets is not None and reference_assets is not None:
+            tickers_to_capture = [ticker for ticker in tickers_to_capture if
+                                  (ticker.baseAsset in base_assets) and
+                                  (ticker.quoteAsset in reference_assets)]
+        return await self._get_historical_data_relevant_coins(tickers_to_capture)
+
+    async def get_all_historical_data(self):
+        """Obtains the historical data of all the combinations"""
+        return await self._get_historical_data_relevant_coins(tickers_to_capture=self.ticker_pool)
+
+    async def _get_historical_data_relevant_coins(self, tickers_to_capture):
         """
         Get the history of all the tickers in the market/exchange
+
+        Args:
+            tickers_to_capture (list): List of tickers to capture
 
         Returns:
              map: map of all the histories in the exchange/market
@@ -176,7 +200,7 @@ class XArrayCoinHistoryObtainer(AbstractCoinHistoryObtainer):
 
         """
         tasks_to_pursue = {}
-        for ticker in self.ticker_pool:
+        for ticker in tickers_to_capture:
             tasks_to_pursue[ticker.baseAsset, ticker.quoteAsset] = \
                 self._get_raw_history_for_ticker(ticker.symbol)
         return await general_utilities.gather_dict(tasks_to_pursue)
@@ -192,10 +216,10 @@ class AbstractDimensionsManager(ABC):
     @dataclass
     class Dimensions:
         """Class for keeping track of the dimensions of the XArray"""
-        base_asset: list
-        reference_asset: list
-        field: list
-        index_number: list
+        base_asset: List
+        reference_asset: List
+        field: List
+        index_number: List
 
     """Class responsible for managing the dimensions/coordinates of teh data container"""
     def __init__(self, coin_history_obtainer):
@@ -297,6 +321,20 @@ class AbstractDataContainerOperations(ABC):
         """
         pass
 
+    @staticmethod
+    def drop_unnecessary_columns_from_df(df, necessary_columns):
+        """
+        Drop all columns which are not necessary from the df
+        Args:
+            df (pd.DataFrame): from which the unnecessary columns are to be dropped
+            necessary_columns (list): list of columns which are to be stored
+
+        Returns:
+            pd.DataFrame where the unnecessary columns are dropped
+        """
+        unnecessary_columns = [col for col in df.columns if col not in necessary_columns]
+        return df.drop(unnecessary_columns, axis=1)
+
 
 class XArrayDataContainerOperations(AbstractDataContainerOperations):
     async def set_coords_dimensions_in_container(self, dataclass_dimensions_coordinates=None):
@@ -313,7 +351,7 @@ class XArrayDataContainerOperations(AbstractDataContainerOperations):
         coordinates = [getattr(dataclass_dimensions_coordinates, item) for item in dimensions]
         self.data_container = xr.DataArray(None, coords=coordinates, dims=dimensions)
 
-    async def get_populated_container(self, coord_dimension_dataclass):
+    async def get_populated_container(self, coord_dimension_dataclass=None):
         """
                 Populates the container and returns it to the use
 
@@ -324,8 +362,10 @@ class XArrayDataContainerOperations(AbstractDataContainerOperations):
 
                 """
         # TODO Avoid populating it every time it is called
+        if coord_dimension_dataclass is None:
+            coord_dimension_dataclass = self.dimensions_manager.get_mapped_coords()
         await self.set_coords_dimensions_in_container(coord_dimension_dataclass)
-        await self.populate_container()
+        await self.populate_container(coord_dimension_dataclass)
         return self.data_container
 
     async def get_all_inclusive_container(self):
@@ -337,18 +377,37 @@ class XArrayDataContainerOperations(AbstractDataContainerOperations):
         """
         return await self.get_populated_container(coord_dimension_dataclass=None)
 
-    async def populate_container(self):
+    def _insert_coin_history_in_container(self, base_asset, reference_asset, history_df):
+        """
+        Low level function to inserts the coin history in the df
+        Args:
+            base_asset (str): base asset of the coin
+            reference_asset (str): reference asset of the coin
+            history_df (pd.DataFrame): data frame of the coin history
+
+        Returns:
+            None
+        """
+        self.data_container.loc[base_asset, reference_asset] = history_df.transpose()
+        logger.debug(f"History set in x_array for ticker {base_asset}{reference_asset}")
+
+    async def populate_container(self, coord_dimension_dataclass):
         """
         Populates the xarray.DataArray with the historical data of all the coins
         """
-        historical_data = await self.history_obtainer.get_historical_data_all_coins()
-        for (base_asset, reference_asset), ticker_history in historical_data.items():
+        historical_data = await self.history_obtainer.get_historical_data_relevant_coins_from_base_and_reference_assets(
+            base_assets=coord_dimension_dataclass.base_asset,
+            reference_assets=coord_dimension_dataclass.reference_asset
+        )
+        for (base_asset, reference_asset), ticker_raw_history in historical_data.items():
             try:
-                history_df = await self.get_compatible_df(ticker_history)
+                history_df = await self.get_compatible_df(ticker_raw_history)
             except exceptions.EmptyDataFrameException:
+                logger.debug(f"History does not exist for the combination of {base_asset}{reference_asset}")
                 continue
-            self.data_container.loc[base_asset, reference_asset] = history_df.transpose()
-            logger.debug(f"History set in x_array for ticker {base_asset}{reference_asset}")
+            else:
+                history_df = self.drop_unnecessary_columns_from_df(history_df, coord_dimension_dataclass.field)
+            self._insert_coin_history_in_container(base_asset, reference_asset, history_df)
 
     @staticmethod
     def calculate_rows_to_add(df, list_of_standard_history) -> int:
@@ -367,6 +426,23 @@ class XArrayDataContainerOperations(AbstractDataContainerOperations):
         expected_rows = len(list_of_standard_history)
         return expected_rows - df_rows
 
+    async def pad_extra_rows_if_necessary(self, history_df):
+        """
+        Add extra rows on the bottom of the DF is necessary. i.e when the history is incomplete.
+        # FixMe . Probably needs to be reevaluated
+        Args:
+            history_df: history of the dataframe that has not been padded yet
+
+        Returns:
+            pd.DataFrame: that has been padded
+
+        """
+        await self.history_obtainer.initialize_example()
+        rows_to_add = self.calculate_rows_to_add(history_df, self.history_obtainer.example_raw_history)
+        if rows_to_add > 0:
+            history_df = self.add_extra_rows_to_bottom(history_df, rows_to_add)
+        return history_df
+
     async def get_compatible_df(self, ticker_history):
         """
         Makes the ticker history compatible to the standard pd.DataFrame by extending the
@@ -380,14 +456,11 @@ class XArrayDataContainerOperations(AbstractDataContainerOperations):
 
         """
         # TODO Assuming that the df is only not filled in the bottom
-        await self.history_obtainer.initialize_example()
         history_df = pd.DataFrame(ticker_history)
         if history_df.empty:
             raise exceptions.EmptyDataFrameException
-        rows_to_add = self.calculate_rows_to_add(history_df, self.history_obtainer.example_raw_history)
-        if rows_to_add > 0:
-            history_df = self.add_extra_rows_to_bottom(history_df, rows_to_add)
-        return history_df
+        padded_df = await self.pad_extra_rows_if_necessary(history_df)
+        return padded_df
 
     @staticmethod
     def add_extra_rows_to_bottom(df: pd.DataFrame, empty_rows_to_add: int):
