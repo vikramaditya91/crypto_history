@@ -2,7 +2,7 @@ from __future__ import annotations
 import logging
 import pandas as pd
 import xarray as xr
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, fields, asdict
 from typing import Union, List
 from datetime import datetime
 from abc import ABC, abstractmethod
@@ -10,6 +10,7 @@ from .tickers import TickerPool
 from .get_market_data import StockMarketFactory
 from ..utilities.general_utilities import register_factory
 from ..utilities import general_utilities, exceptions
+from .data_container_post import XArrayIndexManipulator, AbstractDataContainerIndexManipulator
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,11 @@ class DataFactory(general_utilities.AbstractFactory):
         """
         Factory for managing the coordinates and the dimensions of the data-container
         """
+        pass
+
+    @abstractmethod
+    def create_data_container_index_manipulator(self, *args, **kwargs) -> AbstractDataContainerIndexManipulator:
+        """Factory for managing index manipulations (changing index, joining indices, etc)"""
         pass
 
 
@@ -85,6 +91,9 @@ class ConcreteXArrayFactory(DataFactory):
         """
         return XArrayDataContainerOperations(history_obtainer, dimensions_manager)
 
+    def create_data_container_index_manipulator(self, *args, **kwargs) -> XArrayIndexManipulator:
+        return XArrayIndexManipulator(*args, **kwargs)
+
 
 @register_factory("data")
 class ConcreteSomeOtherFactory(DataFactory):
@@ -98,9 +107,12 @@ class ConcreteSomeOtherFactory(DataFactory):
     def create_data_container_dimensions_manager(self, *args, **kwargs):
         raise NotImplementedError
 
+    def create_data_container_index_manipulator(self, *args, **kwargs):
+        raise NotImplementedError
+
 
 class AbstractCoinHistoryObtainer(ABC):
-    """Abstract class to serve as the parent to generating histories obtianer classes"""
+    """Abstract class to serve as the parent to generating histories obtainer classes"""
     def __init__(self,
                  exchange_factory: StockMarketFactory,
                  interval: str,
@@ -116,7 +128,7 @@ class AbstractCoinHistoryObtainer(ABC):
             interval(str): Length of the history of the klines per item
             start_str(str|datetime): duration from which history is necessary
             end_str(str|datetime): duration upto which history is necessary
-            limit(int): number of klines required maximum. Note that it is limted by 1000 by binance
+            limit(int): number of klines required maximum. Note that it is limited by 1000 by binance
         """
         self.market_requester = exchange_factory.create_market_requester()
         self.market_operations = exchange_factory.create_market_operations(self.market_requester)
@@ -171,7 +183,7 @@ class AbstractCoinHistoryObtainer(ABC):
 
 
 class XArrayCoinHistoryObtainer(AbstractCoinHistoryObtainer):
-    """The x-arrays's coin-history obtainer class"""
+    """The x-array's coin-history obtainer class"""
     async def get_historical_data_relevant_coins_from_base_and_reference_assets(self, base_assets, reference_assets):
         """
         Get the historical data for the combination of base and reference assets
@@ -231,9 +243,16 @@ class AbstractDimensionsManager(ABC):
         """Initializes the dimensions manager with the coin_history_obtainer"""
         self.coin_history_obtainer = coin_history_obtainer
 
+    @abstractmethod
+    def set_coords_dimensions_in_container(self, *args, **kwargs):
+        """
+        Initialize the container (eg. with null-values) to avoid having
+        to reshape the memory which can be processor intensive
+        """
+        pass
+
 
 class XArrayDimensionsManager(AbstractDimensionsManager):
-
     async def get_depth_of_indices(self):
         """
         Obtains the depth of the indices to identify how many time-stamp values
@@ -296,6 +315,24 @@ class XArrayDimensionsManager(AbstractDimensionsManager):
             values.add(getattr(ticker, attribute))
         return values
 
+    async def set_coords_dimensions_in_container(self,
+                                                 data_container,
+                                                 dataclass_dimensions_coordinates=None
+                                                 ) -> xr.DataArray:
+        """
+        Initialize the xarray container with None values but with the coordinates
+        as it helps in the memory allocation
+        Args:
+            data_container: xr.DataArray on which the coordinates are to be set
+            dataclass_dimensions_coordinates: dataclass of coordinates/dimensions as the framework for generating \
+            the XArray
+        """
+        if dataclass_dimensions_coordinates is None:
+            dataclass_dimensions_coordinates = await self.get_mapped_coords()
+        dimensions = [dimension.name for dimension in fields(dataclass_dimensions_coordinates)]
+        coordinates = [getattr(dataclass_dimensions_coordinates, item) for item in dimensions]
+        return xr.DataArray(None, coords=coordinates, dims=dimensions)
+
 
 class AbstractDataContainerOperations(ABC):
     """Abstract Base Class for generating the data operations"""
@@ -318,14 +355,6 @@ class AbstractDataContainerOperations(ABC):
         """
         pass
 
-    @abstractmethod
-    def set_coords_dimensions_in_container(self):
-        """
-        Initialize the container (eg. with null-values) to avoid having
-        to reshape the memory which can be processor intensive
-        """
-        pass
-
     @staticmethod
     def drop_unnecessary_columns_from_df(df, necessary_columns):
         """
@@ -342,21 +371,7 @@ class AbstractDataContainerOperations(ABC):
 
 
 class XArrayDataContainerOperations(AbstractDataContainerOperations):
-    async def set_coords_dimensions_in_container(self, dataclass_dimensions_coordinates=None):
-        """
-        Initialize the xarray container with None values but with the coordinates
-        as it helps in the memory allocation
-        Args:
-            dataclass_dimensions_coordinates: dataclass of coordinates/dimensions as the framework for generating \
-            the XArray
-        """
-        if dataclass_dimensions_coordinates is None:
-            dataclass_dimensions_coordinates = await self.dimensions_manager.get_mapped_coords()
-        dimensions = [dimension.name for dimension in fields(dataclass_dimensions_coordinates)]
-        coordinates = [getattr(dataclass_dimensions_coordinates, item) for item in dimensions]
-        self.data_container = xr.DataArray(None, coords=coordinates, dims=dimensions)
-
-    async def get_populated_container(self, coord_dimension_dataclass=None):
+    async def get_populated_original_container(self, coord_dimension_dataclass=None):
         """
         Populates the container and returns it to the use
 
@@ -368,8 +383,11 @@ class XArrayDataContainerOperations(AbstractDataContainerOperations):
         """
         # TODO Avoid populating it every time it is called
         if coord_dimension_dataclass is None:
-            coord_dimension_dataclass = self.dimensions_manager.get_mapped_coords()
-        await self.set_coords_dimensions_in_container(coord_dimension_dataclass)
+            coord_dimension_dataclass = await self.dimensions_manager.get_mapped_coords()
+        self.data_container = await self.dimensions_manager.set_coords_dimensions_in_container(
+            self.data_container,
+            coord_dimension_dataclass
+        )
         await self.populate_container(coord_dimension_dataclass)
         return self.data_container
 
@@ -380,7 +398,7 @@ class XArrayDataContainerOperations(AbstractDataContainerOperations):
             xr.DataArray: the completely filled container
 
         """
-        return await self.get_populated_container(coord_dimension_dataclass=None)
+        return await self.get_populated_original_container(coord_dimension_dataclass=None)
 
     def _insert_coin_history_in_container(self, base_asset, reference_asset, history_df):
         """
