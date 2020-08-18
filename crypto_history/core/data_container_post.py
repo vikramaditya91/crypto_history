@@ -11,7 +11,12 @@ class AbstractDataContainerIndexManipulator(ABC):
         pass
 
 
-class XArrayIndexManipulator(AbstractDataContainerIndexManipulator):
+class XDataArrayIndexManipulator(AbstractDataContainerIndexManipulator):
     def get_timestamp_indexed_container(self, index_on="open_ts"):
 
         a = 1
+
+
+class XDataSetIndexManipulator(AbstractDataContainerIndexManipulator):
+    def get_timestamp_indexed_container(self, *args, **kwargs):
+        pass

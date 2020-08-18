@@ -4,6 +4,7 @@ import re
 from datetime import datetime
 from typing import Dict
 from abc import ABC
+from dataclasses import dataclass, asdict
 
 
 logger = logging.getLogger(__name__)

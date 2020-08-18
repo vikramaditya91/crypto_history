@@ -204,7 +204,7 @@ class BinanceMarketOperations(AbstractMarketOperations):
         Returns:
              list: List of snapshots of history.
              Each snapshot is a list of collection of OHLCV values.
-             See details in :class:`.BinanceHomogenizer.HistoryFields`
+             See details in :class:`.BinanceHomogenizer.OHLCVFields`
 
         """
         # TODO This should probably be moved to the MarketHomogenizer
@@ -268,7 +268,7 @@ class SomeOtherExchangeMarketOperations(AbstractMarketOperations):
 
 class AbstractMarketHomogenizer(ABC):
     """Synthesizes the information obtained from various different market operator to a consistent format"""
-    HistoryFields = None
+    OHLCVFields = None
     # TODO Make it an abstractmethod
 
     def __init__(self, market_operations):
@@ -323,13 +323,25 @@ class AbstractMarketHomogenizer(ABC):
         """
         pass
 
-    def get_all_history_fields(self):
+    def get_all_ohlcv_fields(self):
         """Gets all the fields from the historical named tuple"""
-        return self.HistoryFields._fields
+        return self.OHLCVFields._fields
+
+    @abstractmethod
+    def get_all_base_assets(self):
+        pass
+
+    @abstractmethod
+    def get_all_reference_assets(self):
+        pass
+
+    @abstractmethod
+    def get_all_raw_tickers(self):
+        pass
 
 
 class BinanceHomogenizer(AbstractMarketHomogenizer):
-    HistoryFields = namedtuple("HistoryFields", ["open_ts", "open", "high", "low", "close", "volume",
+    OHLCVFields = namedtuple("OHLCVFields", ["open_ts", "open", "high", "low", "close", "volume",
                                                  "close_ts", "quote_asset_value", "number_of_trades",
                                                  "taker_buy_base_asset_value", "take_buy_quote_asset_value",
                                                  "ignored"])
@@ -337,6 +349,33 @@ class BinanceHomogenizer(AbstractMarketHomogenizer):
             See Also: https://github.com/binance-exchange/binance-official-api-docs/blob/master/rest-api.md#klinecandlestick-data
             See :meth:`binance.AsyncClient.get_historical_klines` in :py:mod:`python-binance`
     """
+    async def get_all_base_assets(self):
+        return await self.get_set_of_ticker_attributes("baseAsset")
+
+    async def get_all_reference_assets(self):
+        return await self.get_set_of_ticker_attributes("referenceAsset")
+
+    async def get_all_raw_tickers(self) -> List:
+        return await self.market_operator.get_all_raw_tickers()
+
+    async def get_set_of_ticker_attributes(self, attribute: str):
+        """
+        Aggregates the set items of the required attribute
+        across the whole history
+
+        Args:
+            attribute: The attribute/key which is the common term \
+            in the history whose values are to be identified
+
+        Returns:
+             set: set of values whose attributes are common
+
+        """
+
+        values = set()
+        for ticker in await self.get_all_coins_ticker_objects():
+            values.add(getattr(ticker, attribute))
+        return values
 
     @lru_cache(maxsize=1)
     async def get_all_coins_ticker_objects(self) -> TickerPool:
@@ -349,9 +388,8 @@ class BinanceHomogenizer(AbstractMarketHomogenizer):
         # TODO
 
         """
-        all_raw_tickers = await self.market_operator.get_all_raw_tickers()
+        all_raw_tickers = await self.get_all_raw_tickers()
         gathered_operations = []
-        all_raw_tickers = all_raw_tickers[10:12]
         for raw_ticker in all_raw_tickers:
             gathered_operations.append(self.get_ticker_instance(raw_ticker['symbol']))
         all_tickers = await asyncio.gather(*gathered_operations, return_exceptions=False)
@@ -398,11 +436,11 @@ class BinanceHomogenizer(AbstractMarketHomogenizer):
             **kwargs: See the :class:`.BinanceMarketOperator.get_raw_history_for_ticker` for arguments
 
         Returns:
-             map: map of the history of the ticker mapped to the HistoryFields namedtuple
+             map: map of the history of the ticker mapped to the OHLCVFields namedtuple
 
         """
         raw_history = await self.market_operator.get_raw_history_for_ticker(*args, **kwargs)
-        return map(lambda x: self.HistoryFields(*x), raw_history)
+        return map(lambda x: self.OHLCVFields(*x), raw_history)
 
 
 class SomeOtherExchangeHomogenizer(AbstractMarketHomogenizer):
