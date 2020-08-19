@@ -4,14 +4,14 @@ import asyncio
 from abc import ABC, abstractmethod
 from datetime import datetime
 from binance.client import AsyncClient
-from typing import Union, Optional, List, Dict
+from typing import Union, Optional, List, Dict, Generator, Set
 from functools import lru_cache
 from collections import namedtuple
 from binance import enums
 from dataclasses import make_dataclass
 from .tickers import BinanceTickerPool, TickerPool
 from .request import AbstractMarketRequester, BinanceRequester, SomeOtherExchangeRequester
-from ..utilities.general_utilities import AbstractFactory, register_factory
+from ..utilities.general_utilities import AbstractFactory, register_factory, get_dataclass_from_dict
 logger = logging.getLogger(__name__)
 
 
@@ -30,26 +30,22 @@ class StockMarketFactory(AbstractFactory):
 
     @staticmethod
     @abstractmethod
-    def create_market_operations(market_requester) -> AbstractMarketOperations:
+    def create_market_operations() -> AbstractMarketOperations:
         """
         Create the instance of the class to channel the right requests to the low level
         market requester.
 
-        Args:
-            market_requester(AbstractMarketRequester): instance of AbstractMarketRequester
         """
         pass
 
     @staticmethod
     @abstractmethod
-    def create_data_homogenizer(market_operations) -> AbstractMarketHomogenizer:
+    def create_data_homogenizer() -> AbstractMarketHomogenizer:
         """
         Create an instance of a market homogenizer which is the interface to the market from the
         outside. It should ensure that the market data from various markets/exchanges
         which might have different low-level APIs is available in a uniform format.
 
-        Args:
-            market_operations(AbstractMarketOperations): instance of AbstractMarketOperations
         """
         pass
 
@@ -69,33 +65,27 @@ class ConcreteBinanceFactory:
         """
         return BinanceRequester()
 
-    @staticmethod
-    def create_market_operations(market_requester) -> BinanceMarketOperations:
+    def create_market_operations(self) -> BinanceMarketOperations:
         """
         Creates the instance of the Binance Market Operator
-        
-        Args:
-            market_requester(BinanceRequester): BinanceRequester, Low level binance requester
 
         Returns:
              BinanceMarketOperations: Instance of BinanceMarketOperator
 
         """
+        market_requester = self.create_market_requester()
         return BinanceMarketOperations(market_requester)
 
-    @staticmethod
-    def create_data_homogenizer(market_operations) -> BinanceHomogenizer:
+    def create_data_homogenizer(self) -> BinanceHomogenizer:
         """
         Creates the instance of the Binance Market Homogenizer
-        
-        Args:
-            market_operations(BinanceMarketOperations): instance of BinanceMarketOperations
 
         Returns:
              BinanceHomogenizer: Instance of BinanceHomogenizer
 
         """
-        return BinanceHomogenizer(market_operations)
+        market_operator = self.create_market_operations()
+        return BinanceHomogenizer(market_operator)
 
 
 @register_factory("market")
@@ -156,6 +146,11 @@ class AbstractMarketOperations(ABC):
         It is not known what are the exact information that is going to be received
         because the information is coming from various exchanges
         """
+        pass
+
+    @abstractmethod
+    async def get_exchange_info(self, *args, **kwargs):
+        """Gets general properties of the exchange"""
         pass
 
 
@@ -253,6 +248,13 @@ class BinanceMarketOperations(AbstractMarketOperations):
         return await self.market_requester.request("get_symbol_info",
                                                    symbol)
 
+    async def get_exchange_info(self):
+        """
+        Obtains the complete information available at the exchange
+        Returns:
+
+        """
+        return await self.market_requester.request("get_exchange_info")
 
 class SomeOtherExchangeMarketOperations(AbstractMarketOperations):
     """Place holder for another exchange that could be integrated in this module"""
@@ -349,14 +351,39 @@ class BinanceHomogenizer(AbstractMarketHomogenizer):
             See Also: https://github.com/binance-exchange/binance-official-api-docs/blob/master/rest-api.md#klinecandlestick-data
             See :meth:`binance.AsyncClient.get_historical_klines` in :py:mod:`python-binance`
     """
-    async def get_all_base_assets(self):
-        return await self.get_set_of_ticker_attributes("baseAsset")
 
-    async def get_all_reference_assets(self):
-        return await self.get_set_of_ticker_attributes("referenceAsset")
+    async def get_exchange_assets(self, type_of_asset: str) -> Generator:
+        """
+        Obtains the type of asset from the exchange.
+        Args:
+            type_of_asset (str): string identifier that the binance API uses to identify the key in each symbol
+
+        Returns:
+            Generator: The generator of items that are available in the exchange
+
+        """
+        exchange_info = await self.get_exchange_info()
+        symbols_on_exchange = exchange_info.symbols
+        return (symbol[type_of_asset] for symbol in symbols_on_exchange)
+
+    async def get_all_base_assets(self) -> List:
+        """Obtains the list of all base assets """
+        return list(set(await self.get_exchange_assets("baseAsset")))
+
+    async def get_all_reference_assets(self) -> List:
+        """Obtains the list of all reference assets"""
+        return list(set(await self.get_exchange_assets("referenceAsset")))
 
     async def get_all_raw_tickers(self) -> List:
+        """Obtains the list of all raw tickers available on binance"""
+        a = await self.market_operator.get_all_raw_tickers()
+
         return await self.market_operator.get_all_raw_tickers()
+
+    async def get_exchange_info(self):
+        exchange_dict = await self.market_operator.get_exchange_info()
+        exchange_dataclass = get_dataclass_from_dict("exchange_info", exchange_dict)
+        return exchange_dataclass
 
     async def get_set_of_ticker_attributes(self, attribute: str):
         """

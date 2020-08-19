@@ -32,9 +32,7 @@ class PrimitiveCoinHistoryObtainer:
             limit(int): number of klines required maximum. Note that it is limited by 1000 by binance
         """
         assert limit <= 1000, f"Binance will not accept intervals greater than 1000. Reduce it!"
-        self.market_requester = exchange_factory.create_market_requester()
-        self.market_operations = exchange_factory.create_market_operations(self.market_requester)
-        self.market_harmonizer = exchange_factory.create_data_homogenizer(self.market_operations)
+        self.market_harmonizer = exchange_factory.create_data_homogenizer()
         self.data_container = None
         self.interval = interval
         self.start_str = start_str
@@ -167,7 +165,16 @@ class PrimitiveDimensionsManager:
                                                                ohlcv_fields: List,
                                                                base_assets: List,
                                                                reference_assets: List):
+        """
+        Gets the dataclass containing the coordinates required for creating the xr.DataArray
+        Args:
+            ohlcv_fields: fields related to open_ts, close_ts, and so on
+            base_assets: list of base coins
+            reference_assets: list of reference coins
 
+        Returns:
+            DataClass of the coordinates necessary to build the DataArray
+        """
         index_number = await self.get_depth_of_indices()
         ohlcv_fields.append("weight")
         return self.Dimensions(

@@ -192,3 +192,21 @@ class RetryModel:
         """
         await asyncio.sleep(self.sleep_seconds)
         return type(self)(retries=self._retries - 1)
+
+
+def get_dataclass_from_dict(dataclass_name: str,
+                            dict_to_convert: Dict):
+    """
+    Converts a dict to a dataclass of required name
+    Args:
+        dataclass_name (str): name of the dataclass
+        dict_to_convert (Dict): dictionary of items that need to be converted
+
+    Returns:
+        dataclass that is generated from the provided dictionary
+    """
+    dataclass_definition = type(dataclass_name,
+                                (),
+                                {'__annotations__': {k: type(v) for k, v in dict_to_convert.items()}})
+    dataclass_decorated = dataclass(dataclass_definition)
+    return dataclass_decorated(**dict_to_convert)

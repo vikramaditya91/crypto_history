@@ -11,9 +11,11 @@ async def main():
 
     desired_fields = ["open_ts", "open", "high", "low", "close", "close_ts"]
 
+    binance_homogenizer = exchange_factory.create_data_homogenizer()
+    base_assets = await binance_homogenizer.get_all_base_assets()
     time_aggregated_data_container = data_container_pre.TimeAggregatedDataContainer(exchange_factory,
-                                                                                    base_assets=["ETH", "NANO"],
-                                                                                    reference_assets=["USDT","BTC"],
+                                                                                    base_assets=base_assets,
+                                                                                    reference_assets=["USDT"],
                                                                                     ohlcv_fields=desired_fields,
                                                                                     start_ts="25 May 2020",
                                                                                     end_ts="27 May 2020",
