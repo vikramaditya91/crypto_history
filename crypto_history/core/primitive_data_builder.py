@@ -1,3 +1,4 @@
+from __future__ import annotations
 import logging
 import pandas as pd
 import xarray as xr
@@ -185,9 +186,6 @@ class PrimitiveDimensionsManager:
 
 
 class DataFrameOperations:
-    def __init__(self):
-        pass
-
     @staticmethod
     def calculate_rows_to_add(df: DataFrame,
                               list_of_standard_history: List) -> int:
@@ -279,9 +277,8 @@ class DataFrameOperations:
         return history_df
 
 
-class PrimitiveDataContainerOperations:
+class PrimitiveDataArrayOperations:
     """Abstract Base Class for generating the data operations"""
-
     def __init__(self,
                  exchange_factory: StockMarketFactory,
                  base_assets: List,
@@ -402,3 +399,4 @@ class PrimitiveDataContainerOperations:
                 reference_asset,
                 history_df)
         return data_container
+

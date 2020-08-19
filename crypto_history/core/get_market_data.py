@@ -3,11 +3,10 @@ import logging
 import asyncio
 from abc import ABC, abstractmethod
 from datetime import datetime
-from binance.client import AsyncClient
-from typing import Union, Optional, List, Dict, Generator, Set
+from typing import Union, Optional, List, Dict, Generator
 from functools import lru_cache
 from collections import namedtuple
-from binance import enums
+from binance import enums, client
 from dataclasses import make_dataclass
 from .tickers import BinanceTickerPool, TickerPool
 from .request import AbstractMarketRequester, BinanceRequester, SomeOtherExchangeRequester
@@ -91,17 +90,18 @@ class ConcreteBinanceFactory:
 @register_factory("market")
 class ConcreteSomeOtherExchangeFactory(StockMarketFactory):
     """Demo for how another exchange/market's factories would be implemented in this module"""
-
     @staticmethod
     def create_market_requester() -> SomeOtherExchangeRequester:
         """Creates the instance of another Market Requester"""
         raise NotImplementedError
 
-    def create_market_operations(self, market_requester) -> SomeOtherExchangeMarketOperations:
+    @staticmethod
+    def create_market_operations() -> SomeOtherExchangeMarketOperations:
         """Creates the instance of another Market's Operator"""
         raise NotImplementedError
 
-    def create_data_homogenizer(self, market_operations) -> SomeOtherExchangeHomogenizer:
+    @staticmethod
+    def create_data_homogenizer() -> SomeOtherExchangeHomogenizer:
         """Creates the instance of the Market Homogenizer"""
         raise NotImplementedError
 
@@ -176,7 +176,7 @@ class BinanceMarketOperations(AbstractMarketOperations):
             if getattr(enums, item) == string_to_match:
                 binance_matched_enum.append(item)
         assert len(binance_matched_enum) == 1, f"Multiple Binance enums matched with {string_to_match}"
-        return getattr(AsyncClient, binance_matched_enum[0])
+        return getattr(client.AsyncClient, binance_matched_enum[0])
 
     async def get_raw_history_for_ticker(self,
                                          ticker: Union[str],
@@ -209,7 +209,7 @@ class BinanceMarketOperations(AbstractMarketOperations):
         if isinstance(end_str, datetime):
             end_str = str(end_str)
         binance_interval = self._match_binance_enum(interval)
-        if limit>1000:
+        if limit > 1000:
             # TODO Calculate correctly
             logger.warning("Limit exceeded. History is going to be truncated")
         return await self.market_requester.request("get_historical_klines",
@@ -256,6 +256,7 @@ class BinanceMarketOperations(AbstractMarketOperations):
         """
         return await self.market_requester.request("get_exchange_info")
 
+
 class SomeOtherExchangeMarketOperations(AbstractMarketOperations):
     """Place holder for another exchange that could be integrated in this module"""
     def get_raw_symbol_info(self, *args, **kwargs):
@@ -265,6 +266,9 @@ class SomeOtherExchangeMarketOperations(AbstractMarketOperations):
         raise NotImplementedError
 
     async def get_all_raw_tickers(self, *args, **kwargs):
+        raise NotImplementedError
+
+    def get_exchange_info(self, *args, **kwargs):
         raise NotImplementedError
 
 
@@ -344,11 +348,12 @@ class AbstractMarketHomogenizer(ABC):
 
 class BinanceHomogenizer(AbstractMarketHomogenizer):
     OHLCVFields = namedtuple("OHLCVFields", ["open_ts", "open", "high", "low", "close", "volume",
-                                                 "close_ts", "quote_asset_value", "number_of_trades",
-                                                 "taker_buy_base_asset_value", "take_buy_quote_asset_value",
-                                                 "ignored"])
+                                             "close_ts", "quote_asset_value", "number_of_trades",
+                                             "taker_buy_base_asset_value", "take_buy_quote_asset_value",
+                                             "ignored"])
     """Fields for the named tuple of the OHLCV returned by Binance get_klines_history
-            See Also: https://github.com/binance-exchange/binance-official-api-docs/blob/master/rest-api.md#klinecandlestick-data
+            See Also: https://github.com/binance-exchange/binance-official-api-docs/blob/master/\
+            rest-api.md#klinecandlestick-data
             See :meth:`binance.AsyncClient.get_historical_klines` in :py:mod:`python-binance`
     """
 
@@ -376,8 +381,6 @@ class BinanceHomogenizer(AbstractMarketHomogenizer):
 
     async def get_all_raw_tickers(self) -> List:
         """Obtains the list of all raw tickers available on binance"""
-        a = await self.market_operator.get_all_raw_tickers()
-
         return await self.market_operator.get_all_raw_tickers()
 
     async def get_exchange_info(self):
@@ -479,5 +482,17 @@ class SomeOtherExchangeHomogenizer(AbstractMarketHomogenizer):
         raise NotImplementedError
 
     def get_history_for_ticker(self, *args, **kwargs):
+        raise NotImplementedError
+
+    def get_all_reference_assets(self):
+        raise NotImplementedError
+
+    def get_all_base_assets(self):
+        raise NotImplementedError
+
+    def get_all_ohlcv_fields(self):
+        raise NotImplementedError
+
+    def get_all_raw_tickers(self):
         raise NotImplementedError
 
