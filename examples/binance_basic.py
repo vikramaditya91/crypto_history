@@ -13,6 +13,7 @@ async def main():
 
     binance_homogenizer = exchange_factory.create_data_homogenizer()
     base_assets = await binance_homogenizer.get_all_base_assets()
+    base_assets = base_assets[::10]
     time_aggregated_data_container = data_container_pre.TimeAggregatedDataContainer(exchange_factory,
                                                                                     base_assets=base_assets,
                                                                                     reference_assets=["USDT"],

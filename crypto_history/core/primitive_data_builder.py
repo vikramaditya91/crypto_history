@@ -177,11 +177,10 @@ class PrimitiveDimensionsManager:
             DataClass of the coordinates necessary to build the DataArray
         """
         index_number = await self.get_depth_of_indices()
-        ohlcv_fields.append("weight")
         return self.Dimensions(
             base_assets=base_assets,
             reference_assets=reference_assets,
-            ohlcv_fields=ohlcv_fields,
+            ohlcv_fields=ohlcv_fields + ["weight"],
             index_number=index_number)
 
 

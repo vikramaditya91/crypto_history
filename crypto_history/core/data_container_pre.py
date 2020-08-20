@@ -1,6 +1,6 @@
 from .primitive_data_builder import PrimitiveDataArrayOperations
 import xarray as xr
-
+from typing import List
 
 class XArrayDataSetDataContainer:
     """Responsible for transforming the DataArray provided by the primite_data_builder to a more usable DataSet"""
@@ -76,12 +76,65 @@ class XArrayDataSetDataContainer:
 
 
 class TimeStampIndexedDataContainer:
-    def __init__(self, *args, **kwargs):
-        self.xarray_dataset_container = XArrayDataSetDataContainer(*args, **kwargs)
+    def __init__(self,
+                 exchange_factory,
+                 base_assets,
+                 reference_assets,
+                 reference_ticker,
+                 aggregate_coordinate_by,
+                 ohlcv_fields,
+                 weight,
+                 start_str,
+                 end_str,
+                 limit):
+        self.aggregate_coordinate_by = aggregate_coordinate_by
+        self.xarray_dataset_container = XArrayDataSetDataContainer(exchange_factory,
+                                                                   base_assets,
+                                                                   reference_assets,
+                                                                   ohlcv_fields,
+                                                                   weight,
+                                                                   start_str,
+                                                                   end_str,
+                                                                   limit)
+        self.reference_base, self.reference_quote = reference_ticker
+        self.xarray_dataset_reference_container = XArrayDataSetDataContainer(exchange_factory,
+                                                                             [self.reference_base],
+                                                                             [self.reference_quote],
+                                                                             ohlcv_fields,
+                                                                             weight,
+                                                                             start_str,
+                                                                             end_str,
+                                                                             limit)
 
     async def get_timestamped_data_container(self):
-        a = await self.xarray_dataset_container.get_xr_dataset_coin_history()
-        return a
+        return await self.xarray_dataset_container.get_xr_dataset_coin_history()
+
+    async def get_timestamped_reference_data_container(self):
+        return await self.xarray_dataset_reference_container.get_xr_dataset_coin_history()
+
+    @staticmethod
+    def set_dataset_with_common_coordinate(dataset: xr.Dataset,
+                                           reference_ts: List) -> xr.Dataset:
+        a = 1
+
+
+
+        return dataset
+
+    async def get_dataset_with_common_coordinate(self):
+        original_dataset = await self.get_timestamped_data_container()
+        reference_ts = await self.get_reference_timestamps()
+        return self.set_dataset_with_common_coordinate(original_dataset, reference_ts)
+
+    @staticmethod
+    def obtain_coordinate_from_dataset(dataset: xr.Dataset, coordinate_name: str) -> List:
+        coordinate_nested_list = getattr(dataset, coordinate_name).values.tolist()
+        return coordinate_nested_list[0][0]
+
+    async def get_reference_timestamps(self):
+        reference_dataset = await self.get_timestamped_reference_data_container()
+        return self.obtain_coordinate_from_dataset(reference_dataset, self.aggregate_coordinate_by)
+
 
 
 class TimeAggregatedDataContainer:
@@ -92,7 +145,9 @@ class TimeAggregatedDataContainer:
                  ohlcv_fields,
                  start_ts,
                  end_ts,
-                 details_of_ts):
+                 details_of_ts,
+                 reference_ticker=("ETH", "BTC"),
+                 aggregate_coordinate_by="open_ts"):
         self.exchange_factory = exchange_factory
         self.base_assets = base_assets
         self.reference_assets = reference_assets
@@ -100,6 +155,8 @@ class TimeAggregatedDataContainer:
         self.start_ts = start_ts
         self.end_ts = end_ts
         self.details_ts = details_of_ts
+        self.reference_ticker = reference_ticker
+        self.aggregate_coordinate_by = aggregate_coordinate_by
 
     async def get_time_aggregated_data_container(self):
         interval = "1d"
@@ -107,13 +164,15 @@ class TimeAggregatedDataContainer:
             self.exchange_factory,
             self.base_assets,
             self.reference_assets,
+            self.reference_ticker,
+            self.aggregate_coordinate_by,
             self.ohlcv_fields,
             interval,
             start_str=self.start_ts,
             end_str=self.end_ts,
             limit=500
         )
-        return await time_stamp_indexed_container.get_timestamped_data_container()
+        return await time_stamp_indexed_container.get_dataset_with_common_coordinate()
 
     def create_chunks_of_requests(self):
         pass
