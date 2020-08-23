@@ -80,9 +80,10 @@ class TimeStampIndexedDataContainer:
 
         """
         selected_da = dataarray.sel({coord_name:field_in_coord})
-        list_of_all_ts = list(set(selected_da.values.flatten().tolist()))
-        if None in list_of_all_ts:
-            list_of_all_ts.remove(None)
+        flattened_np_array = selected_da.values.flatten()
+        none_removed = flattened_np_array[flattened_np_array != None]
+        nan_removed = none_removed[~pd.isnull(none_removed)]
+        list_of_all_ts = list(set(nan_removed.tolist()))
         list_of_all_ts.sort()
         logger.info(f"The unique values of {coord_name} of field {field_in_coord}"
                     f" in the dataarray are {list_of_all_ts}")
@@ -287,7 +288,9 @@ class TimeStampIndexedDataContainer:
         df = pd.DataFrame(sub_dataarray.values.transpose())
         if not df.isna().all().all():
             df = df.set_index(index_of_integrating_ts)
-            return df.reindex(reference_ts, method="nearest", tolerance=tolerance)
+            df = df.reindex(reference_ts, method="nearest", tolerance=tolerance)
+            df.sort_index()
+            return df
         raise EmptyDataFrameException("The data only contains na values. \n"
                                       "Dataframe cannot be successfully generated")
 
