@@ -1,17 +1,17 @@
-from .primitive_data_builder import PrimitiveDataArrayOperations
 import logging
 import xarray as xr
 import numpy as np
 import pandas as pd
 from typing import List, Dict
+from .primitive_data_builder import PrimitiveDataArrayOperations
 from ..utilities.exceptions import EmptyDataFrameException
-
 
 logger = logging.getLogger(__name__)
 
 
 class TimeStampIndexedDataContainer:
-    """Responsible for transforming the DataArray provided by the primite_data_builder to a more usable DataSet"""
+    """Responsible for transforming the Primitive DataArray to a DataArray indexed by the timestamp of choice
+     with possibility to approximate for easier handling"""
     def __init__(self,
                  exchange_factory,
                  base_assets,
@@ -32,10 +32,10 @@ class TimeStampIndexedDataContainer:
                                                                           start_str,
                                                                           end_str,
                                                                           limit)
-        self.reference_base, self.reference_quote = reference_ticker
+        reference_base, reference_quote = reference_ticker
         self.primitive_reference_data_container = PrimitiveDataArrayOperations(exchange_factory,
-                                                                               [self.reference_base],
-                                                                               [self.reference_quote],
+                                                                               [reference_base],
+                                                                               [reference_quote],
                                                                                ohlcv_fields,
                                                                                weight,
                                                                                start_str,
@@ -46,7 +46,7 @@ class TimeStampIndexedDataContainer:
     @staticmethod
     async def get_primitive_xr_dataarray(data_container_object: PrimitiveDataArrayOperations) -> xr.DataArray:
         """
-        Gets the primitive xr.DataArray container
+        Gets the primitive xr.DataArray from the data container object
         Returns:
             xr.DataArray: the actual xr.DataArray
         """
@@ -68,12 +68,11 @@ class TimeStampIndexedDataContainer:
                               coord_name: str,
                               field_in_coord: str) -> List:
         """
-        Gets all the unique values in the xr.DataArray in the particular coordinate in the particular\
-         item in the coordinate
+        Gets all the unique values in the xr.DataArray in the particular item of the coordinate
         Args:
-            dataarray: dataarray whose data is to be selected
-            coord_name: name of the coordinate which is the primary selector
-            field_in_coord: name of the item in the coordinate which is the second level of select
+            dataarray (xr.DataArray): whose data is to be selected
+            coord_name (str): name of the coordinate which is the primary selector
+            field_in_coord (str): name of the item in the coordinate which is the second level of select
 
         Returns:
             list of all the items in the selected coordinate, field sorted increasingly
@@ -81,7 +80,7 @@ class TimeStampIndexedDataContainer:
         """
         selected_da = dataarray.sel({coord_name:field_in_coord})
         flattened_np_array = selected_da.values.flatten()
-        none_removed = flattened_np_array[flattened_np_array != None]
+        none_removed = flattened_np_array[flattened_np_array is None]
         nan_removed = none_removed[~pd.isnull(none_removed)]
         list_of_all_ts = list(set(nan_removed.tolist()))
         list_of_all_ts.sort()
@@ -89,8 +88,8 @@ class TimeStampIndexedDataContainer:
                     f" in the dataarray are {list_of_all_ts}")
         return list_of_all_ts
 
-    async def get_ts_of_reference_da(self,
-                                     field_in_coord: str) -> List:
+    async def get_timestamps_of_reference_dataarray(self,
+                                                    field_in_coord: str) -> List:
         """
         Obtains the time stamp list from the reference dataarray
         Args:
@@ -103,10 +102,10 @@ class TimeStampIndexedDataContainer:
         logger.info("Getting the timestamp from the reference dataarray")
         return reference_dataarray.sel(ohlcv_fields=field_in_coord).values.flatten().tolist()
 
-    async def get_ts_for_new_dataarray(self,
-                                       do_approximation: bool,
-                                       dataarray: xr.DataArray,
-                                       ) -> List:
+    async def get_timestamps_for_new_dataarray(self,
+                                               do_approximation: bool,
+                                               dataarray: xr.DataArray,
+                                               ) -> List:
         """Obtains the time stamp for the new dataarray.
         It may either select it from the reference dataarray or get it from the actual
         dataarray if approximation is not desired
@@ -121,14 +120,14 @@ class TimeStampIndexedDataContainer:
         """
         if do_approximation is True:
             logger.info("The timestamps are going to be approximated to the reference dataarray's timestamps")
-            return await self.get_ts_of_reference_da(self.aggregate_coordinate_by)
+            return await self.get_timestamps_of_reference_dataarray(self.aggregate_coordinate_by)
         else:
             logger.info("The timestamps will not be approximated")
             return self.get_all_unique_values(dataarray, self.ohlcv_coord_name, self.aggregate_coordinate_by)
 
-    async def get_xr_dataarray_ts_indexed(self,
-                                          do_approximation=True,
-                                          tolerance_ratio=0.001) -> xr.DataArray:
+    async def get_xr_dataarray_indexed_by_timestamps(self,
+                                                     do_approximation: bool = True,
+                                                     tolerance_ratio: float = 0.001) -> xr.DataArray:
         """
         Gets the xr.DataSet of the coin histories of the particular chunk.
         Obtains the data and then transforms it to the xr.DataSet
@@ -151,10 +150,10 @@ class TimeStampIndexedDataContainer:
                                                           self.ohlcv_coord_name,
                                                           self.aggregate_coordinate_by)
 
-        return self.populate_new_dataarray(populated_dataarray,
-                                           new_df,
-                                           index_of_integrating_ts,
-                                           tolerance)
+        return self._populate_ts_indexed_dataarray(populated_dataarray,
+                                                   new_df,
+                                                   index_of_integrating_ts,
+                                                   tolerance)
 
     async def generate_empty_df_with_new_timestamps(self,
                                                     do_approximation: bool,
@@ -169,8 +168,8 @@ class TimeStampIndexedDataContainer:
             xr.DataArray The new empty dataarray which has the coordinates set
 
         """
-        reference_ts = await self.get_ts_for_new_dataarray(do_approximation,
-                                                           old_dataarray)
+        reference_ts = await self.get_timestamps_for_new_dataarray(do_approximation,
+                                                                   old_dataarray)
 
         new_coordinates = self.get_coords_for_timestamp_indexed_datarray(old_dataarray,
                                                                          reference_ts)
@@ -261,7 +260,7 @@ class TimeStampIndexedDataContainer:
             float, value of the tolerance value
 
         """
-        standard_ts = await self.get_ts_of_reference_da(self.aggregate_coordinate_by)
+        standard_ts = await self.get_timestamps_of_reference_dataarray(self.aggregate_coordinate_by)
         standard_diff = np.diff(standard_ts).mean()
         logger.info(f"The standard difference between timestamps while calculating timestamps are {standard_diff}")
         return standard_diff*ratio
@@ -294,11 +293,11 @@ class TimeStampIndexedDataContainer:
         raise EmptyDataFrameException("The data only contains na values. \n"
                                       "Dataframe cannot be successfully generated")
 
-    def populate_new_dataarray(self,
-                               old_dataarray: xr.DataArray,
-                               new_dataarray: xr.DataArray,
-                               index_of_integrating_ts: int,
-                               tolerance: float) -> xr.DataArray:
+    def _populate_ts_indexed_dataarray(self,
+                                       old_dataarray: xr.DataArray,
+                                       new_dataarray: xr.DataArray,
+                                       index_of_integrating_ts: int,
+                                       tolerance: float) -> xr.DataArray:
         """
         Populates the new dataarray with the new indexes
         Args:
@@ -512,7 +511,7 @@ class TimeAggregatedDataContainer:
             end_str=self.end_ts,
             limit=500
         )
-        return await time_stamp_indexed_container.get_xr_dataarray_ts_indexed(do_approximation=False)
+        return await time_stamp_indexed_container.get_xr_dataarray_indexed_by_timestamps(do_approximation=False)
 
     def create_chunks_of_requests(self):
         pass
