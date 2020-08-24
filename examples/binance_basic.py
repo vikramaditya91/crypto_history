@@ -10,15 +10,17 @@ async def main():
     exchange_factory = class_builders.get("market").get("binance")()
 
     desired_fields = ["open_ts", "open", "high", "low", "close", "close_ts"]
+    desired_fields = ["open_ts", "open"]
 
     binance_homogenizer = exchange_factory.create_data_homogenizer()
     base_assets = await binance_homogenizer.get_all_base_assets()
-    base_assets = base_assets[::10]
+    base_assets = base_assets[::40]
+    # base_assets = ["NANO", "IOST", "XRP"]
     time_aggregated_data_container = data_container_pre.TimeAggregatedDataContainer(exchange_factory,
                                                                                     base_assets=base_assets,
                                                                                     reference_assets=["USDT"],
                                                                                     ohlcv_fields=desired_fields,
-                                                                                    start_ts="25 May 2020",
+                                                                                    start_ts="25 Jan 2020",
                                                                                     end_ts="27 May 2020",
                                                                                     details_of_ts="d")
     xdataset_of_coins = await time_aggregated_data_container.get_time_aggregated_data_container()
