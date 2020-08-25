@@ -29,18 +29,23 @@ async def gather_dict(tasks: dict):
 class TokenBucket:
     """Controls the number of requests that can be made to the API.
     All times are written in micro-seconds for a good level of accuracy"""
+
     def __init__(self, request_limit: Dict, pause_seconds: float = 1):
         """
         Initializes the TokenBucket algorithm to throttle the flow of requests
 
         Args:
             request_limit: dictionary of requests that can be made where \
-            the key is the datetime.timedelta object and the value is the number of maximum requests allowed
+            the key is the datetime.timedelta object and the value is the\
+             number of maximum requests allowed
             pause_seconds: amount of seconds to pause and test again
         """
         self.queue = asyncio.Queue()
-        self.bucket_list, self.delta_t_list, self.max_requests_list = \
-            self._initialize_buckets(request_limit)
+        (
+            self.bucket_list,
+            self.delta_t_list,
+            self.max_requests_list,
+        ) = self._initialize_buckets(request_limit)
         self.last_check = datetime.now()
         self.pause_seconds = pause_seconds
         self.results = []
@@ -54,18 +59,21 @@ class TokenBucket:
 
         # TODO Does not follow SRP. Split it into different methods
         Args:
-            requests_dict(Dict):  the key is the datetime.timedelta object and \
-            the value is the number of maximum requests allowed
+            requests_dict(Dict):  the key is the datetime.timedelta \
+            object and the value is the number of maximum requests allowed
 
 
         Returns:
-            Tuple(List): Each item in the dict corresponds to each item in the list
+            Tuple(List): Each item in the dict corresponds to each item\
+             in the list
              bucket_list: which is the list of tokens inside the bucket.\
-              During initialization it has the max number of tokens which is equal to number of max-requests
+              During initialization it has the max number of tokens which is\
+               equal to number of max-requests
 
             delta_t_list: which is the list of total-duration
 
-            max_requests: which is the list of the max number of requests in allotted time
+            max_requests: which is the list of the max number of requests\
+             in allotted time
 
         """
         bucket_list = []
@@ -78,25 +86,33 @@ class TokenBucket:
         return bucket_list, delta_t_list, max_requests_list
 
     async def hold_if_exceeded(self):
-        """Interface to the outside. It pauses the request until the request is allowed"""
+        """Interface to the outside. It pauses the request until\
+         the request is allowed"""
         await self._check_if_within_limits()
         self._counter += 1
 
     async def _check_if_within_limits(self):
-        """Checks if the method can be called i.e if the requests is within the limits
+        """Checks if the method can be called i.e if the requests is\
+         within the limits
         # TODO Does not follow SRP. Split it into parts"""
         current = datetime.now()
         time_passed = current - self.last_check
         self.last_check = current
         for it in range(len(self.bucket_list)):
-            self.bucket_list[it] += \
-                time_passed.total_seconds() * 10e6 *\
-                self.max_requests_list[it] / self.delta_t_list[it]
+            self.bucket_list[it] += (
+                time_passed.total_seconds()
+                * 10e6
+                * self.max_requests_list[it]
+                / self.delta_t_list[it]
+            )
 
             if self.bucket_list[it] > self.max_requests_list[it]:
                 self.bucket_list[it] = self.max_requests_list[it]
             if self.bucket_list[it] < 1:
-                logger.debug("Requests have exceeded. Waiting for token bucket to fill-up")
+                logger.debug(
+                    "Requests have exceeded. Waiting for token"
+                    "bucket to fill-up"
+                )
                 await asyncio.sleep(self.pause_seconds)
                 if await self._check_if_within_limits() is True:
                     continue
@@ -105,7 +121,9 @@ class TokenBucket:
 
 
 class AbstractFactory(ABC):
-    """Abstract Factory for all the factories which is responsible for registering classes"""
+    """Abstract Factory for all the factories which is responsible \
+    for registering classes"""
+
     _builders = {}
 
     @staticmethod
@@ -124,9 +142,11 @@ class AbstractFactory(ABC):
     @classmethod
     def register_builder(cls, factory_type, class_type):
         """Registers the factory to be used later by the user"""
-        assert cls.valid_subclass_to_register(class_type), "Not a valid class to register. " \
-                                                           "Ensure that the name follows the format " \
-                                                           "'Concrete.*Factory'"
+        assert cls.valid_subclass_to_register(class_type), (
+            "Not a valid class to register. "
+            "Ensure that the name follows the format "
+            "'Concrete.*Factory'"
+        )
         if factory_type not in cls._builders.keys():
             cls._builders[factory_type] = {}
         identifier = cls.get_identifier_string(class_type)
@@ -139,33 +159,40 @@ class AbstractFactory(ABC):
 
 def register_factory(factory_type):
     """Decorator for registering factories in the factory_types"""
+
     def decorate(decorated_class_type):
         """Registers the class type in the factory_type"""
         AbstractFactory.register_builder(factory_type, decorated_class_type)
 
         class Wrapper:
             pass
+
         Wrapper.__doc__ = decorated_class_type.__doc__
         Wrapper.__name__ = decorated_class_type.__name__
         for attribute, func in decorated_class_type.__dict__.items():
             if callable(decorated_class_type.__dict__[attribute]):
-                setattr(Wrapper, attribute, decorated_class_type.__dict__[attribute])
+                setattr(
+                    Wrapper,
+                    attribute,
+                    decorated_class_type.__dict__[attribute],
+                )
         # Necessary for sphinx to obtain the dc-string correctly
         return Wrapper
+
     return decorate
 
 
 class RetryModel:
     """Provides the ability for the method to be retried"""
-    def __init__(self,
-                 retries: int = 3,
-                 sleep_seconds: int = 5):
+
+    def __init__(self, retries: int = 3, sleep_seconds: int = 5):
         """
         Initialize the retry model
 
         Args:
             retries(int): number of attempts
-            sleep_seconds(int): number of seconds to sleep if the retrhad failed
+            sleep_seconds(int): number of seconds to sleep if \
+            the retry had failed
         """
         self.retries = retries
         self.sleep_seconds = sleep_seconds
