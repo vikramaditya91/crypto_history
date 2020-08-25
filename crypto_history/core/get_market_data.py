@@ -180,7 +180,7 @@ class BinanceMarketOperations(AbstractMarketOperations):
         for item in dir(enums):
             if getattr(enums, item) == string_to_match:
                 binance_matched_enum.append(item)
-        assert len(binance_matched_enum) == 1, f"Multiple Binance enums matched with {string_to_match}"
+        assert len(binance_matched_enum) == 1, f"Multiple or no Binance enums matched with {string_to_match}"
         return getattr(AsyncClient, binance_matched_enum[0])
 
     async def get_raw_history_for_ticker(self,
