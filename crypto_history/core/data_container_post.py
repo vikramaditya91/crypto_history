@@ -13,8 +13,7 @@ class AbstractDataContainerIndexManipulator(ABC):
 
 class XDataArrayIndexManipulator(AbstractDataContainerIndexManipulator):
     def get_timestamp_indexed_container(self, index_on="open_ts"):
-
-        a = 1
+        pass
 
 
 class XDataSetIndexManipulator(AbstractDataContainerIndexManipulator):
