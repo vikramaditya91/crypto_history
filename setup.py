@@ -27,6 +27,18 @@ def get_version(rel_path):
 
 VERSION = get_version(op.join(op.dirname(__file__), PACKAGE_NAME, "version.py"))
 
+extras = {
+    "ci": ["coveralls"],
+    "lint": ["black", "flake8", "pre-commit", "pydocstyle"],
+    "test": [
+        "pytest-vcr",
+        "vcrpy==4.0.2",
+        "mock >=0.8",
+        "pytest",
+    ],
+}
+
+extras["dev"] = extras["lint"] + extras["test"]
 
 setup(
     name=PACKAGE_NAME,
@@ -48,9 +60,7 @@ setup(
         "crypto_history is a python package for extracting history of crypto-currencies from "
         "various exchanges and presenting them ivn a data-format of choice"
     ),
-    dependency_links=[
-        "https://github.com/vikramaditya91/python-binance/tarball/feature/asyncio-release#egg=python-binance-async-0.7.3.b1"
-    ],
+    extras_require=extras,
     install_requires=[
         'python-binance-async',
         'xarray',
