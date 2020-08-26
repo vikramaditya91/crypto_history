@@ -382,6 +382,7 @@ class AbstractMarketHomogenizer(ABC):
 
 
 class BinanceHomogenizer(AbstractMarketHomogenizer):
+    # Do not consider a dataclass as there is no vectorized method to convert to pd.DataFrame
     OHLCVFields = namedtuple(
         "OHLCVFields",
         [

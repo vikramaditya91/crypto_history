@@ -77,6 +77,18 @@ class TimeStampIndexedDataContainer:
             self.primitive_reference_data_container
         )
 
+    async def get_primitive_full_xr_dataarray(self) -> xr.DataArray:
+        """
+        Gets the full data container
+        Returns:
+            xr.DataArray: the complete data container
+
+        """
+        logger.info("Obtain the primitive complete dataarray")
+        return await self.get_primitive_xr_dataarray(
+            self.primitive_full_data_container
+        )
+
     @staticmethod
     def get_all_unique_values(
         dataarray: xr.DataArray, coord_name: str, field_in_coord: str
@@ -98,9 +110,13 @@ class TimeStampIndexedDataContainer:
         """
         selected_da = dataarray.sel({coord_name: field_in_coord})
         flattened_np_array = selected_da.values.flatten()
-        none_removed = flattened_np_array[flattened_np_array is None]
+        none_removed = flattened_np_array[flattened_np_array != np.array(None)]
         nan_removed = none_removed[~pd.isnull(none_removed)]
         list_of_all_ts = list(set(nan_removed.tolist()))
+        try:
+            [int(item) for item in list_of_all_ts]
+        except Exception as e:
+            a = 1
         list_of_all_ts.sort()
         logger.info(
             f"The unique values of {coord_name} of field {field_in_coord}"
@@ -172,12 +188,7 @@ class TimeStampIndexedDataContainer:
         Returns:
             xr.DataSet data of the coin history
         """
-        populated_dataarray = await self.get_primitive_xr_dataarray(
-            self.primitive_full_data_container
-        )
-        populated_dataarray = self.damage_value_of_dataarray(
-            populated_dataarray
-        )
+        populated_dataarray = await self.get_primitive_full_xr_dataarray()
 
         new_df = await self.generate_empty_df_with_new_timestamps(
             do_approximation, populated_dataarray
@@ -331,6 +342,10 @@ class TimeStampIndexedDataContainer:
         return standard_diff * ratio
 
     @staticmethod
+    def clear_df_of_illegitimate_values(df: pd.DataFrame):
+        pass
+
+    @staticmethod
     def get_df_to_insert(
         sub_dataarray: xr.DataArray,
         index_of_integrating_ts: int,
@@ -358,6 +373,7 @@ class TimeStampIndexedDataContainer:
         """
         df = pd.DataFrame(sub_dataarray.values.transpose())
         if not df.isna().all().all():
+            df = df.dropna()
             df = df.set_index(index_of_integrating_ts)
             df = df.reindex(
                 reference_ts, method="nearest", tolerance=tolerance
@@ -418,159 +434,6 @@ class TimeStampIndexedDataContainer:
                         f"{ref_coin_iter.reference_assets.values.tolist()}. Skipping the df"
                     )
         return new_dataarray
-
-    @staticmethod
-    def damage_value_of_dataarray(populated_dataarray):
-        coin_name = str(populated_dataarray.base_assets[0].values)
-        if coin_name != "ETH":
-            coin_index = 0
-            while np.equal(
-                populated_dataarray.loc[{"base_assets": coin_name}][
-                    0, 0, 0
-                ].values,
-                None,
-            ):
-                coin_index += 1
-                coin_name = str(
-                    populated_dataarray.base_assets[coin_index].values
-                )
-                if coin_index > 10:
-                    raise ValueError
-
-            a = populated_dataarray.loc[{"base_assets": coin_name}]
-            a[0, 0, 0] = a[0, 0, 0] + 1
-            populated_dataarray.loc[{"base_assets": coin_name}] = a
-            return populated_dataarray
-        else:
-            return populated_dataarray
-
-
-#
-# class DataSetDataContainer_OPTIONAL:
-#     def __init__(self,
-#                  exchange_factory,
-#                  base_assets,
-#                  reference_assets,
-#                  reference_ticker,
-#                  aggregate_coordinate_by,
-#                  ohlcv_fields,
-#                  weight,
-#                  start_str,
-#                  end_str,
-#                  limit):
-#         self.aggregate_coordinate_by = aggregate_coordinate_by
-#         self.xarray_dataset_container = XArrayDataSetDataContainer(exchange_factory,
-#                                                                    base_assets,
-#                                                                    reference_assets,
-#                                                                    ohlcv_fields,
-#                                                                    weight,
-#                                                                    start_str,
-#                                                                    end_str,
-#                                                                    limit)
-#         self.reference_base, self.reference_quote = reference_ticker
-#         self.xarray_dataset_reference_container = XArrayDataSetDataContainer(exchange_factory,
-#                                                                              [self.reference_base],
-#                                                                              [self.reference_quote],
-#                                                                              ohlcv_fields,
-#                                                                              weight,
-#                                                                              start_str,
-#                                                                              end_str,
-#                                                                              limit)
-#
-#     def general_transfer_from_dataarray_to_dataset(self,
-#                                                    dataarray: xr.DataArray,
-#                                                    pivot_coordinate: str) -> xr.Dataset:
-#         """
-#         Transforms a general xr.DataArray to a xr.DataSet
-#         Args:
-#             dataarray (xr.DataArray): where the ohlcv_fields, base_assets, index_numbers\
-#             and references are coordinates of the DataArray
-#             pivot_coordinate (str): the coordinate which is translated to the data-vars in xr.DataSet
-#
-#         Returns:
-#             xr.DataSet generated the xr.DataArray and pivoted by pivot_coordinate
-#
-#         """
-#         transposed_dataarray = self.transpose_datarray_over_coord(dataarray, pivot_coordinate)
-#         return self.transform_general_dataarray_to_dataset(transposed_dataarray)
-#
-#     @staticmethod
-#     def transpose_datarray_over_coord(dataarray: xr.DataArray,
-#                                       pivot_coordinate: str) -> xr.DataArray:
-#         """Transposes a general xr.DataArray such that the first-coordinate is the pivot-coordinate
-#         Args:
-#             dataarray (xr.DataArray): The dataarray whose coordinates are to be transposed
-#             pivot_coordinate (str): The coordinate which should the new fundamental coordinate
-#         Returns:
-#             xr.DataArray whose coordinates are transformed
-#         """
-#         coords = list(dataarray.coords)
-#         assert pivot_coordinate in coords, f"The pivot_coordinate {pivot_coordinate} should be already a coordinate in" \
-#                                            f"the dataarray"
-#         coords.remove(pivot_coordinate)
-#         coords.insert(0, pivot_coordinate)
-#         return dataarray.transpose(*coords)
-#
-#     @staticmethod
-#     def transform_general_dataarray_to_dataset(dataarray: xr.DataArray) -> xr.Dataset:
-#         """
-#         Transforms a general dataarray to a dataset.
-#         The fields in the first coordinates is become the data-vars
-#         Args:
-#             dataarray (xr.DataArray): The dataarray whose data is to be transformed
-#         Returns:
-#
-#         """
-#         pivot_coordinate = dataarray.coords.dims[0]
-#         return xr.Dataset({individual_dataarray.ohlcv_fields.item():
-#                           individual_dataarray.drop(pivot_coordinate)
-#                           for individual_dataarray in dataarray})
-#
-#     async def get_timestamped_data_container(self):
-#         return await self.xarray_dataset_container.get_xr_dataset_coin_history()
-#
-
-#
-#     @staticmethod
-#     def get_ascending_list_from_numpy_array(numpy_array):
-#         flattened_list = numpy_array.flatten().tolist()
-#         filtered_list = list(filter(None, flattened_list))
-#         non_duplicated_list = list(set(filtered_list))
-#         non_duplicated_list.sort()
-#         return non_duplicated_list
-#
-#     def set_dataset_with_common_coordinate(self,
-#                                            dataset: xr.Dataset,
-#                                            index_to_replace: str,
-#                                            index_of_reference: str,
-#                                            reference_ts: List) -> xr.Dataset:
-#         assert len(dataset[index_to_replace]) == len(reference_ts), "The length of reference time-stamps do not match" \
-#                                                                     f" the dataset['{index_to_replace}']"
-#         # dataset["open"] = dataset["open"].fillna(value=np.nan).astype(float)
-#         dataset["open_ts"] = dataset.open_ts.fillna(value=-9999).astype(int)
-#
-#         all_possible_ts = self.get_ascending_list_from_numpy_array(dataset[index_of_reference].values)
-#         assinged = dataset.assign_coords(index_number=reference_ts)
-#         reindexed_dataset = dataset.reindex({index_to_replace: reference_ts})
-#         renamed_dataset = reindexed_dataset.rename({"index_number": "timestamp"})
-#         a = 1
-#
-#
-#
-#         return dataset
-#
-#     async def get_dataset_with_common_coordinate(self):
-#         original_dataset = await self.get_timestamped_data_container()
-#         reference_ts = await self.get_reference_timestamps()
-#         return self.set_dataset_with_common_coordinate(original_dataset,
-#                                                        "index_number",
-#                                                        self.aggregate_coordinate_by,
-#                                                        reference_ts)
-#
-
-#     async def get_reference_timestamps(self):
-#         reference_dataset = await self.get_timestamped_reference_data_container()
-#         return self.obtain_coordinate_from_dataset(reference_dataset, self.aggregate_coordinate_by)
 
 
 class TimeAggregatedDataContainer:
