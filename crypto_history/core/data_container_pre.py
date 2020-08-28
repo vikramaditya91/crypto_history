@@ -3,6 +3,7 @@ import xarray as xr
 import numpy as np
 import pandas as pd
 from typing import List, Dict
+from .stock_market_factory import StockMarketFactory
 from .primitive_data_builder import PrimitiveDataArrayOperations
 from ..utilities.exceptions import EmptyDataFrameException
 
@@ -16,16 +17,16 @@ class TimeStampIndexedDataContainer:
 
     def __init__(
         self,
-        exchange_factory,
-        base_assets,
-        reference_assets,
-        reference_ticker,
-        aggregate_coordinate_by,
-        ohlcv_fields,
-        weight,
-        start_str,
-        end_str,
-        limit,
+        exchange_factory: StockMarketFactory,
+        base_assets: List,
+        reference_assets: List,
+        reference_ticker: tuple,
+        aggregate_coordinate_by: str,
+        ohlcv_fields: List,
+        weight: str,
+        start_str: str,
+        end_str: str,
+        limit: int,
     ):
         self.aggregate_coordinate_by = aggregate_coordinate_by
         self.primitive_full_data_container = PrimitiveDataArrayOperations(
@@ -60,7 +61,7 @@ class TimeStampIndexedDataContainer:
         Returns:
             xr.DataArray: the actual xr.DataArray
         """
-        logger.info(
+        logger.debug(
             f"Getting the primitive dataarray for {data_container_object}"
         )
         return await data_container_object.get_populated_primitive_container()
@@ -72,7 +73,7 @@ class TimeStampIndexedDataContainer:
             xr.DataArray: the reference data container (eg. ETHBTC history)
 
         """
-        logger.info("Obtain the primitive reference dataarray")
+        logger.debug("Obtain the primitive reference dataarray")
         return await self.get_primitive_xr_dataarray(
             self.primitive_reference_data_container
         )
@@ -84,7 +85,7 @@ class TimeStampIndexedDataContainer:
             xr.DataArray: the complete data container
 
         """
-        logger.info("Obtain the primitive complete dataarray")
+        logger.debug("Obtain the primitive complete dataarray")
         return await self.get_primitive_xr_dataarray(
             self.primitive_full_data_container
         )
@@ -114,7 +115,7 @@ class TimeStampIndexedDataContainer:
         nan_removed = none_removed[~pd.isnull(none_removed)]
         list_of_all_ts = list(set(nan_removed.tolist()))
         list_of_all_ts.sort()
-        logger.info(
+        logger.debug(
             f"The unique values of {coord_name} of field {field_in_coord}"
             f" in the dataarray are {list_of_all_ts}"
         )
@@ -133,7 +134,7 @@ class TimeStampIndexedDataContainer:
             list of the time stamps from the reference dataarray
         """
         reference_dataarray = await self.get_primitive_reference_xr_dataarray()
-        logger.info("Getting the timestamp from the reference dataarray")
+        logger.debug("Getting the timestamp from the reference dataarray")
         return (
             reference_dataarray.sel(ohlcv_fields=field_in_coord)
             .values.flatten()
@@ -227,7 +228,7 @@ class TimeStampIndexedDataContainer:
         new_coordinates = self.get_coords_for_timestamp_indexed_datarray(
             old_dataarray, reference_ts
         )
-        logger.info(
+        logger.debug(
             f"The new dataframe will be initialized with"
             f" coordinates: {new_coordinates}"
         )
@@ -333,7 +334,7 @@ class TimeStampIndexedDataContainer:
             self.aggregate_coordinate_by
         )
         standard_diff = np.diff(standard_ts).mean()
-        logger.info(
+        logger.debug(
             f"The standard difference between timestamps while calculating"
             f" timestamps are {standard_diff}"
         )
@@ -421,14 +422,14 @@ class TimeStampIndexedDataContainer:
                         ref_coin_iter.base_assets.values.tolist(),
                         ref_coin_iter.reference_assets.values.tolist(),
                     ] = df_to_insert
-                    logger.info(
+                    logger.debug(
                         "The dataframe has been inserted in"
                         " the new dataframe for"
                         f"{ref_coin_iter.base_assets.values.tolist()}"
                         f"{ref_coin_iter.reference_assets.values.tolist()}."
                     )
                 except EmptyDataFrameException:
-                    logger.info(
+                    logger.debug(
                         f"Empty dataframe for combination of "
                         f"{ref_coin_iter.base_assets.values.tolist()}"
                         f"{ref_coin_iter.reference_assets.values.tolist()}."
