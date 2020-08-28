@@ -27,3 +27,11 @@ The following provide information on storing the market data in a data container
 .. autoclass:: crypto_history.core.data_container.XArrayDataContainerOperations()
     :members:
     :undoc-members:
+
+.. autoclass:: crypto_history.core.data_container.AbstractDimensionsManager()
+    :members:
+    :undoc-members:
+
+.. autoclass:: crypto_history.core.data_container.XArrayDimensionsManager()
+    :members:
+    :undoc-members:

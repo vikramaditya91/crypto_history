@@ -3,11 +3,10 @@ import logging
 import asyncio
 from abc import ABC, abstractmethod
 from datetime import datetime
-from binance.client import AsyncClient
-from typing import Union, Optional, List, Dict
+from typing import Union, Optional, List, Dict, Generator
 from functools import lru_cache
 from collections import namedtuple
-from binance import enums
+from binance import enums, client
 from dataclasses import make_dataclass
 from .tickers import BinanceTickerPool, TickerPool
 from .request import (
@@ -15,7 +14,11 @@ from .request import (
     BinanceRequester,
     SomeOtherExchangeRequester,
 )
-from ..utilities.general_utilities import AbstractFactory, register_factory
+from ..utilities.general_utilities import (
+    AbstractFactory,
+    register_factory,
+    get_dataclass_from_dict,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -35,40 +38,34 @@ class StockMarketFactory(AbstractFactory):
 
     @staticmethod
     @abstractmethod
-    def create_market_operations(
-        market_requester,
-    ) -> AbstractMarketOperations:
+    def create_market_operations() -> AbstractMarketOperations:
         """
         Create the instance of the class to channel the right requests\
-         to the low level
-        market requester.
+         to the low level market requester.
 
-        Args:
-            market_requester(AbstractMarketRequester): instance of\
-             AbstractMarketRequester
         """
         pass
 
     @staticmethod
     @abstractmethod
-    def create_data_homogenizer(
-        market_operations,
-    ) -> AbstractMarketHomogenizer:
+    def create_data_homogenizer() -> AbstractMarketHomogenizer:
         """
-        Create an instance of a market homogenizer which is the interface \
-        to the market from the outside. It should ensure that the market \
-        data from various markets/exchanges which might have different\
-         low-level APIs is available in a uniform format.
+        Create an instance of a market homogenizer which is the interface\
+         to the market from the outside. It should ensure that the market\
+          data from various markets/exchanges which might have different \
+          low-level APIs is available in a uniform format.
 
-        Args:
-            market_operations(AbstractMarketOperations): instance of\
-             AbstractMarketOperations
         """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def create_ohlcv_field_types() -> AbstractOHLCVFieldTypes:
         pass
 
 
 @register_factory("market")
-class ConcreteBinanceFactory:
+class ConcreteBinanceFactory(StockMarketFactory):
     """Binance's factory for creating factories"""
 
     @staticmethod
@@ -82,57 +79,56 @@ class ConcreteBinanceFactory:
         """
         return BinanceRequester()
 
-    @staticmethod
-    def create_market_operations(market_requester) -> BinanceMarketOperations:
+    def create_market_operations(self) -> BinanceMarketOperations:
         """
         Creates the instance of the Binance Market Operator
-
-        Args:
-            market_requester(BinanceRequester): BinanceRequester,\
-             Low level binance requester
 
         Returns:
              BinanceMarketOperations: Instance of BinanceMarketOperator
 
         """
+        market_requester = self.create_market_requester()
         return BinanceMarketOperations(market_requester)
 
-    @staticmethod
-    def create_data_homogenizer(market_operations) -> BinanceHomogenizer:
+    def create_data_homogenizer(self) -> BinanceHomogenizer:
         """
         Creates the instance of the Binance Market Homogenizer
-
-        Args:
-            market_operations(BinanceMarketOperations): \
-            instance of BinanceMarketOperations
 
         Returns:
              BinanceHomogenizer: Instance of BinanceHomogenizer
 
         """
-        return BinanceHomogenizer(market_operations)
+        market_operator = self.create_market_operations()
+        type_checker = self.create_ohlcv_field_types()
+        return BinanceHomogenizer(market_operator, type_checker)
+
+    @staticmethod
+    def create_ohlcv_field_types() -> BinanceOHLCVFieldTypes:
+        return BinanceOHLCVFieldTypes()
 
 
 @register_factory("market")
 class ConcreteSomeOtherExchangeFactory(StockMarketFactory):
-    """Demo for how another exchange/market's factories\
-     would be implemented in this module"""
+    """Demo for how another exchange/market's factories would be\
+     implemented in this module"""
 
     @staticmethod
     def create_market_requester() -> SomeOtherExchangeRequester:
         """Creates the instance of another Market Requester"""
         raise NotImplementedError
 
-    def create_market_operations(
-        self, market_requester
-    ) -> SomeOtherExchangeMarketOperations:
+    @staticmethod
+    def create_market_operations() -> SomeOtherExchangeMarketOperations:
         """Creates the instance of another Market's Operator"""
         raise NotImplementedError
 
-    def create_data_homogenizer(
-        self, market_operations
-    ) -> SomeOtherExchangeHomogenizer:
+    @staticmethod
+    def create_data_homogenizer() -> SomeOtherExchangeHomogenizer:
         """Creates the instance of the Market Homogenizer"""
+        raise NotImplementedError
+
+    @staticmethod
+    def create_ohlcv_field_types() -> AbstractOHLCVFieldTypes:
         raise NotImplementedError
 
 
@@ -141,8 +137,8 @@ class AbstractMarketOperations(ABC):
 
     Seeing that the market requester may respond with different formats,\
      it is not possible to know the signature of the method. \
-     The arguments and the return values are unknown
-    by the AbstractMarketOperator
+     The arguments and the return values are unknown by the \
+     AbstractMarketOperator
 
     """
 
@@ -161,8 +157,7 @@ class AbstractMarketOperations(ABC):
         """
         Obtain all the tickers from the low-level market requester.
         Seeing that the market requester may respond with different\
-         formats, it is not possible
-        to know the signature of the method
+         formats, it is not possible to know the signature of the method
         """
         pass
 
@@ -178,15 +173,19 @@ class AbstractMarketOperations(ABC):
         """
         Obtains the information on the particular ticker.
         It is not known what are the exact information that is\
-         going to be received
-        because the information is coming from various exchanges
+         going to be received because the information is coming \
+         from various exchanges
         """
+        pass
+
+    @abstractmethod
+    async def get_exchange_info(self, *args, **kwargs):
+        """Gets general properties of the exchange"""
         pass
 
 
 class BinanceMarketOperations(AbstractMarketOperations):
-    """Binance's market operator. Implements methods to get\
-     market knowledge"""
+    """Binance's market operator. Implements methods to get market knowledge"""
 
     @staticmethod
     def _match_binance_enum(string_to_match: str):
@@ -197,8 +196,8 @@ class BinanceMarketOperations(AbstractMarketOperations):
         binance.html#binance.client.AsyncClient
 
         Args:
-            string_to_match(str): string which should be matched \
-            to binance's enum
+            string_to_match(str): string which should be matched\
+             to binance's enum
 
         Returns:
              binance.enum: enum object from python-binance
@@ -210,8 +209,8 @@ class BinanceMarketOperations(AbstractMarketOperations):
                 binance_matched_enum.append(item)
         assert (
             len(binance_matched_enum) == 1
-        ), f"Multiple or no Binance enums matched with {string_to_match}"
-        return getattr(AsyncClient, binance_matched_enum[0])
+        ), f"Multiple Binance enums matched with {string_to_match}"
+        return getattr(client.AsyncClient, binance_matched_enum[0])
 
     async def get_raw_history_for_ticker(
         self,
@@ -236,7 +235,7 @@ class BinanceMarketOperations(AbstractMarketOperations):
         Returns:
              list: List of snapshots of history.
              Each snapshot is a list of collection of OHLCV values.
-             See details in :class:`.BinanceHomogenizer.HistoryFields`
+             See details in :class:`.BinanceHomogenizer.OHLCVFields`
 
         """
         # TODO This should probably be moved to the MarketHomogenizer
@@ -265,8 +264,8 @@ class BinanceMarketOperations(AbstractMarketOperations):
         Returns:
              list: All the raw tickers obtained from the python-binance\
               (:py:mod:`python-binance`)\
-             In binance, the format of each raw ticker\
-              is {"symbol": <>, "price": <>}
+             In binance, the format of each raw ticker is \
+             {"symbol": <>, "price": <>}
 
         """
         return await self.market_requester.request("get_all_tickers")
@@ -279,20 +278,29 @@ class BinanceMarketOperations(AbstractMarketOperations):
             symbol(str): symbol of the ticker whose information is desired
 
         Returns:
-             dict: The raw information of the ticker desired with information \
-             where the keys are the baseAsset, precision, quoteAsset, etc.
-             See :meth:`binance.AsyncClient.get_symbol_info` in\
-              :py:mod:`python-binance
+             dict: The raw information of the ticker desired with \
+             information where the keys are the
+             baseAsset, precision, quoteAsset, etc.
+             See :meth:`binance.AsyncClient.get_symbol_info` in \
+             :py:mod:`python-binance
              <https://python-binance.readthedocs.io/en/latest/\
              binance.html#binance.client.Client>`
 
         """
         return await self.market_requester.request("get_symbol_info", symbol)
 
+    async def get_exchange_info(self):
+        """
+        Obtains the complete information available at the exchange
+        Returns:
+
+        """
+        return await self.market_requester.request("get_exchange_info")
+
 
 class SomeOtherExchangeMarketOperations(AbstractMarketOperations):
-    """Place holder for another exchange that could \
-    be integrated in this module"""
+    """Place holder for another exchange that could be \
+    integrated in this module"""
 
     def get_raw_symbol_info(self, *args, **kwargs):
         raise NotImplementedError
@@ -303,34 +311,38 @@ class SomeOtherExchangeMarketOperations(AbstractMarketOperations):
     async def get_all_raw_tickers(self, *args, **kwargs):
         raise NotImplementedError
 
+    def get_exchange_info(self, *args, **kwargs):
+        raise NotImplementedError
+
 
 class AbstractMarketHomogenizer(ABC):
-    """Synthesizes the information obtained from various different market \
-    operator to a consistent format"""
+    """Synthesizes the information obtained from various different market\
+     operator to a consistent format"""
 
-    HistoryFields = None
+    OHLCVFields = None
     # TODO Make it an abstractmethod
 
-    def __init__(self, market_operations):
+    def __init__(self, market_operations, type_checker):
         """
         Initializes the class with the instance of the corresponding \
         market operator
 
         Args:
-            market_operations (AbstractMarketOperations): Instance of\
-             the corresponding market operator
+            market_operations (AbstractMarketOperations): Instance of \
+            the corresponding market operator
         """
         self.market_operator = market_operations
+        self.type_checker = type_checker
 
     @abstractmethod
     async def get_all_coins_ticker_objects(self) -> TickerPool:
         """
-        Generates the standard/uniform TickerPool object which should\
-         be consistent no matter which exchange it is coming from
+        Generates the standard/uniform TickerPool object which should \
+        be consistent no matter which exchange it is coming from
 
         Returns:
-             TickerPool: TickerPool which contains all the different\
-              tickers and holds it in one
+             TickerPool: TickerPool which contains all the different \
+             tickers and holds it in one
 
         """
         pass
@@ -339,8 +351,8 @@ class AbstractMarketHomogenizer(ABC):
     def get_ticker_instance(self, *args, **kwargs):
         """
         Gets the standard ticker dataclass object.
-        Note that the fields may be dependent on the exchange that it\
-         is coming from
+        Note that the fields may be dependent on the exchange \
+        that it is coming from
 
         Args:
             *args: unknown, as it depends on the exchange
@@ -367,36 +379,76 @@ class AbstractMarketHomogenizer(ABC):
         """
         pass
 
-    def get_all_history_fields(self):
-        """Gets all the fields from the historical named tuple"""
-        return self.HistoryFields._fields
+    @abstractmethod
+    def get_all_base_assets(self):
+        pass
+
+    @abstractmethod
+    def get_all_reference_assets(self):
+        pass
+
+    @abstractmethod
+    def get_all_raw_tickers(self):
+        pass
+
+    def get_named_ohlcv_tuple(self):
+        return self.type_checker.get_named_tuple()
 
 
 class BinanceHomogenizer(AbstractMarketHomogenizer):
-    HistoryFields = namedtuple(
-        "HistoryFields",
-        [
-            "open_ts",
-            "open",
-            "high",
-            "low",
-            "close",
-            "volume",
-            "close_ts",
-            "quote_asset_value",
-            "number_of_trades",
-            "taker_buy_base_asset_value",
-            "take_buy_quote_asset_value",
-            "ignored",
-        ],
-    )
-    """Fields for the named tuple of the OHLCV returned by \
-    Binance get_klines_history
-            See Also: https://github.com/binance-exchange/\
-            binance-official-api-docs/blob/master/rest-api.md#klinecandlestick-data
-            See :meth:`binance.AsyncClient.get_historical_klines`\
-             in :py:mod:`python-binance`
-    """
+    async def get_exchange_assets(self, type_of_asset: str) -> Generator:
+        """
+        Obtains the type of asset from the exchange.
+        Args:
+            type_of_asset (str): string identifier that the binance\
+             API uses to identify the key in each symbol
+
+        Returns:
+            Generator: The generator of items that are available in\
+             the exchange
+
+        """
+        exchange_info = await self.get_exchange_info()
+        symbols_on_exchange = exchange_info.symbols
+        return (symbol[type_of_asset] for symbol in symbols_on_exchange)
+
+    async def get_all_base_assets(self) -> List:
+        """Obtains the list of all base assets """
+        return list(set(await self.get_exchange_assets("baseAsset")))
+
+    async def get_all_reference_assets(self) -> List:
+        """Obtains the list of all reference assets"""
+        return list(set(await self.get_exchange_assets("referenceAsset")))
+
+    async def get_all_raw_tickers(self) -> List:
+        """Obtains the list of all raw tickers available on binance"""
+        return await self.market_operator.get_all_raw_tickers()
+
+    async def get_exchange_info(self):
+        exchange_dict = await self.market_operator.get_exchange_info()
+        exchange_dataclass = get_dataclass_from_dict(
+            "exchange_info", exchange_dict
+        )
+        return exchange_dataclass
+
+    async def get_set_of_ticker_attributes(self, attribute: str):
+        """
+        Aggregates the set items of the required attribute
+        across the whole history
+
+        Args:
+            attribute: The attribute/key which is the common term \
+            in the history whose values are to be identified
+
+        Returns:
+             set: set of values whose attributes are common
+
+        """
+
+        values = set()
+        for ticker in await self.get_all_coins_ticker_objects():
+            values.add(getattr(ticker, attribute))
+        return values
 
     @lru_cache(maxsize=1)
     async def get_all_coins_ticker_objects(self) -> TickerPool:
@@ -405,12 +457,12 @@ class BinanceHomogenizer(AbstractMarketHomogenizer):
         from all the tickers/symbols that are available on the exchange
 
         Returns:
-             TickerPool: All tickers and their information stored in\
-              the TickerPool defined in
+             TickerPool: All tickers and their information stored in the\
+              TickerPool defined in
         # TODO
 
         """
-        all_raw_tickers = await self.market_operator.get_all_raw_tickers()
+        all_raw_tickers = await self.get_all_raw_tickers()
         gathered_operations = []
         for raw_ticker in all_raw_tickers:
             gathered_operations.append(
@@ -442,12 +494,12 @@ class BinanceHomogenizer(AbstractMarketHomogenizer):
 
     async def get_ticker_instance(self, ticker_name: str):
         """
-        Obtains the TickerDataclass based on the string of the\
-         ticker name provided
+        Obtains the TickerDataclass based on the string of the \
+        ticker name provided
 
         Args:
-            ticker_name(str): ticker name whose standard Ticker\
-             dataclass object is desired
+            ticker_name(str): ticker name whose standard Ticker \
+            dataclass object is desired
 
         Returns:
              dataclass: instance of the dataclass of the ticker
@@ -472,19 +524,20 @@ class BinanceHomogenizer(AbstractMarketHomogenizer):
             get_raw_history_for_ticker` for arguments
 
         Returns:
-             map: map of the history of the ticker mapped to the\
-              HistoryFields namedtuple
+             map: map of the history of the ticker mapped to \
+             the OHLCVFields namedtuple
 
         """
         raw_history = await self.market_operator.get_raw_history_for_ticker(
             *args, **kwargs
         )
-        return map(lambda x: self.HistoryFields(*x), raw_history)
+        named_tuple_instance = self.get_named_ohlcv_tuple()
+        return map(lambda x: named_tuple_instance(*x), raw_history)
 
 
 class SomeOtherExchangeHomogenizer(AbstractMarketHomogenizer):
-    """Placeholder to show how another market homogenizer
-    could be implemented"""
+    """Placeholder to show how another market\
+     homogenizer could be implemented"""
 
     def get_ticker_instance(self, *args, **kwargs):
         raise NotImplementedError
@@ -494,3 +547,49 @@ class SomeOtherExchangeHomogenizer(AbstractMarketHomogenizer):
 
     def get_history_for_ticker(self, *args, **kwargs):
         raise NotImplementedError
+
+    def get_all_reference_assets(self):
+        raise NotImplementedError
+
+    def get_all_base_assets(self):
+        raise NotImplementedError
+
+    def get_all_raw_tickers(self):
+        raise NotImplementedError
+
+
+class AbstractOHLCVFieldTypes(ABC):
+    class OHLCVFields:
+        pass
+
+    # Do not consider a dataclass as I could not
+    # find a quick way to get data in a df from data
+    def get_named_tuple(self):
+        return namedtuple(
+            self.OHLCVFields.__name__, self.OHLCVFields.__annotations__.keys()
+        )
+
+
+class BinanceOHLCVFieldTypes(AbstractOHLCVFieldTypes):
+    """Fields for the named tuple of the OHLCV returned by Binance \
+    get_klines_history
+            See Also: https://github.com/binance-exchange/\
+            binance-official-api-docs/blob/master/\
+            rest-api.md#klinecandlestick-data
+            See :meth:`binance.AsyncClient.get_historical_klines` in \
+            :py:mod:`python-binance`
+    """
+
+    class OHLCVFields:
+        open_ts: int
+        open: float
+        high: float
+        low: float
+        close: float
+        volume: float
+        close_ts: int
+        quote_asset_value: float
+        number_of_trades: int
+        taker_buy_base_asset_value: float
+        take_buy_quote_asset_value: float
+        ignored: int

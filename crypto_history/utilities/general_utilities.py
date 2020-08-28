@@ -4,6 +4,7 @@ import re
 from datetime import datetime
 from typing import Dict
 from abc import ABC
+from dataclasses import dataclass
 
 
 logger = logging.getLogger(__name__)
@@ -59,16 +60,16 @@ class TokenBucket:
 
         # TODO Does not follow SRP. Split it into different methods
         Args:
-            requests_dict(Dict):  the key is the datetime.timedelta \
-            object and the value is the number of maximum requests allowed
+            requests_dict(Dict):  the key is the datetime.timedelta object \
+            and the value is the number of maximum requests allowed
 
 
         Returns:
             Tuple(List): Each item in the dict corresponds to each item\
              in the list
              bucket_list: which is the list of tokens inside the bucket.\
-              During initialization it has the max number of tokens which is\
-               equal to number of max-requests
+              During initialization it has the max number of tokens which\
+               is equal to number of max-requests
 
             delta_t_list: which is the list of total-duration
 
@@ -86,14 +87,13 @@ class TokenBucket:
         return bucket_list, delta_t_list, max_requests_list
 
     async def hold_if_exceeded(self):
-        """Interface to the outside. It pauses the request until\
-         the request is allowed"""
+        """Interface to the outside. It pauses the request \
+        until the request is allowed"""
         await self._check_if_within_limits()
         self._counter += 1
 
     async def _check_if_within_limits(self):
-        """Checks if the method can be called i.e if the requests is\
-         within the limits
+        """Checks if the method can be called i.e if the requests is within the limits
         # TODO Does not follow SRP. Split it into parts"""
         current = datetime.now()
         time_passed = current - self.last_check
@@ -111,7 +111,7 @@ class TokenBucket:
             if self.bucket_list[it] < 1:
                 logger.debug(
                     "Requests have exceeded. Waiting for token"
-                    "bucket to fill-up"
+                    " bucket to fill-up"
                 )
                 await asyncio.sleep(self.pause_seconds)
                 if await self._check_if_within_limits() is True:
@@ -121,8 +121,8 @@ class TokenBucket:
 
 
 class AbstractFactory(ABC):
-    """Abstract Factory for all the factories which is responsible \
-    for registering classes"""
+    """Abstract Factory for all the factories which is responsible
+     for registering classes"""
 
     _builders = {}
 
@@ -191,8 +191,8 @@ class RetryModel:
 
         Args:
             retries(int): number of attempts
-            sleep_seconds(int): number of seconds to sleep if \
-            the retry had failed
+            sleep_seconds(int): number of seconds to sleep if the\
+             retry failed
         """
         self.retries = retries
         self.sleep_seconds = sleep_seconds
@@ -218,3 +218,22 @@ class RetryModel:
         """
         await asyncio.sleep(self.sleep_seconds)
         return type(self)(retries=self._retries - 1)
+
+
+def get_dataclass_from_dict(dataclass_name: str, dict_to_convert: Dict):
+    """
+    Converts a dict to a dataclass of required name
+    Args:
+        dataclass_name (str): name of the dataclass
+        dict_to_convert (Dict): dictionary of items that need to be converted
+
+    Returns:
+        dataclass that is generated from the provided dictionary
+    """
+    dataclass_definition = type(
+        dataclass_name,
+        (),
+        {"__annotations__": {k: type(v) for k, v in dict_to_convert.items()}},
+    )
+    dataclass_decorated = dataclass(dataclass_definition)
+    return dataclass_decorated(**dict_to_convert)

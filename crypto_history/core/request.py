@@ -71,9 +71,7 @@ class AbstractMarketRequester(ABC):
                 method_name, retry_strategy_state, *args, **kwargs
             )
 
-    async def _retry(
-        self, method_name, retry_strategy_state, *args, **kwargs
-    ):
+    async def _retry(self, method_name, retry_strategy_state, *args, **kwargs):
         """
         Triggered when the original request had failed.
 
