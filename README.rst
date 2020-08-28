@@ -23,6 +23,10 @@ Welcome to crypto-history
     :target: https://pepy.tech/badge/crypto-history/week
     :alt: crypto-history download status per week
 
+.. image:: https://coveralls.io/repos/github/vikramaditya91/crypto_history/badge.svg?branch=feature/match-index-dataframe
+:target: https://coveralls.io/github/vikramaditya91/crypto_history?branch=feature/match-index-dataframe
+
+
 This is a wrapper on binance and other exchange APIs to aggregate historical information
 in structured tabular formats (such as xarray.DataArray)
 

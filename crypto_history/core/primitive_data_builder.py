@@ -3,7 +3,7 @@ import logging
 import pandas as pd
 import xarray as xr
 from pandas import DataFrame
-from dataclasses import dataclass, fields, asdict
+from dataclasses import dataclass, fields
 from typing import Union, List, Dict, Iterable
 from datetime import datetime
 from .tickers import TickerPool

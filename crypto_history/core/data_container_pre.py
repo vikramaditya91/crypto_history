@@ -113,10 +113,6 @@ class TimeStampIndexedDataContainer:
         none_removed = flattened_np_array[flattened_np_array != np.array(None)]
         nan_removed = none_removed[~pd.isnull(none_removed)]
         list_of_all_ts = list(set(nan_removed.tolist()))
-        try:
-            [int(item) for item in list_of_all_ts]
-        except Exception as e:
-            a = 1
         list_of_all_ts.sort()
         logger.info(
             f"The unique values of {coord_name} of field {field_in_coord}"
@@ -130,7 +126,8 @@ class TimeStampIndexedDataContainer:
         """
         Obtains the time stamp list from the reference dataarray
         Args:
-            field_in_coord (str): the item in the ohlcv_fields which is of interest
+            field_in_coord (str): the item in the ohlcv_fields which\
+             is of interest
 
         Returns:
             list of the time stamps from the reference dataarray
@@ -147,8 +144,8 @@ class TimeStampIndexedDataContainer:
         self, do_approximation: bool, dataarray: xr.DataArray,
     ) -> List:
         """Obtains the time stamp for the new dataarray.
-        It may either select it from the reference dataarray or get it from the actual
-        dataarray if approximation is not desired
+        It may either select it from the reference dataarray or\
+         get it from the actual dataarray if approximation is not desired
         Args:
             do_approximation (bool): if True, timestamps are approximated and\
              taken from the reference dataarray. if False, timestamps are not\
@@ -181,8 +178,8 @@ class TimeStampIndexedDataContainer:
         Gets the xr.DataSet of the coin histories of the particular chunk.
         Obtains the data and then transforms it to the xr.DataSet
         Args:
-            do_approximation (bool): check if the timestamps can be approximated
-             to the reference datarray
+            do_approximation (bool): check if the timestamps can be \
+            approximated to the reference datarray
             tolerance_ratio (float): the ratio of the maximum tolerance for
              approximations of timestamps
         Returns:
@@ -214,7 +211,8 @@ class TimeStampIndexedDataContainer:
         """
         Generates an empty dataframe with new timestamps in the coordinates
         Args:
-            do_approximation (bool): Check if the timestamps can be approximated 
+            do_approximation (bool): Check if the timestamps can be \
+             approximated
             old_dataarray (xr.DataArray): The old dataarray used for reference
             for constructing new dataarray
 
@@ -264,10 +262,10 @@ class TimeStampIndexedDataContainer:
         """
         Gets the coordinates for the timestamp index dataarray
         Args:
-            old_dataarray (xr.DataArray): The old dataarray taken as the building\
-             block for the new dataarray
-            reference_ts (list): The new timestamps which serve as the references\
-             instead of index_number
+            old_dataarray (xr.DataArray): The old dataarray taken as the\
+             building block for the new dataarray
+            reference_ts (list): The new timestamps which serve as the\
+             references instead of index_number
 
         Returns:
             dictionary of coordinates for the new dataarray
@@ -369,7 +367,8 @@ class TimeStampIndexedDataContainer:
             in the required indices
 
         Raises:
-            EmptyDataFrameException if the sub_dataarray contains only na values
+            EmptyDataFrameException if the sub_dataarray contains\
+             only na values
         """
         df = pd.DataFrame(sub_dataarray.values.transpose())
         if not df.isna().all().all():
@@ -395,7 +394,7 @@ class TimeStampIndexedDataContainer:
         """
         Populates the new dataarray with the new indexes
         Args:
-            old_dataarray (xr.DataArray): The old dataarray which contains the \
+            old_dataarray (xr.DataArray): The old dataarray which contains the\
             values to build the new dataframe
             new_dataarray: (xr.DataArray): The new empty dataarray whose\
              coordinates have already been set
@@ -423,7 +422,8 @@ class TimeStampIndexedDataContainer:
                         ref_coin_iter.reference_assets.values.tolist(),
                     ] = df_to_insert
                     logger.info(
-                        "The dataframe has been inserted in the new dataframe for"
+                        "The dataframe has been inserted in"
+                        " the new dataframe for"
                         f"{ref_coin_iter.base_assets.values.tolist()}"
                         f"{ref_coin_iter.reference_assets.values.tolist()}."
                     )
@@ -431,7 +431,8 @@ class TimeStampIndexedDataContainer:
                     logger.info(
                         f"Empty dataframe for combination of "
                         f"{ref_coin_iter.base_assets.values.tolist()}"
-                        f"{ref_coin_iter.reference_assets.values.tolist()}. Skipping the df"
+                        f"{ref_coin_iter.reference_assets.values.tolist()}."
+                        f" Skipping the df"
                     )
         return new_dataarray
 

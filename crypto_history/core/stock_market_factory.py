@@ -573,8 +573,9 @@ class AbstractOHLCVFieldTypes(ABC):
     # Do not consider a dataclass as I could not
     # find a quick way to get data in a df from data
     def get_named_tuple(self):
-        return namedtuple(self.OHLCVFields.__name__,
-                          self.OHLCVFields.__annotations__.keys())
+        return namedtuple(
+            self.OHLCVFields.__name__, self.OHLCVFields.__annotations__.keys()
+        )
 
 
 class BinanceOHLCVFieldTypes(AbstractOHLCVFieldTypes):
@@ -586,17 +587,17 @@ class BinanceOHLCVFieldTypes(AbstractOHLCVFieldTypes):
             See :meth:`binance.AsyncClient.get_historical_klines` in \
             :py:mod:`python-binance`
     """
+
     class OHLCVFields:
         open_ts: int
         open: float
         high: float
         low: float
         close: float
-        volume:  float
+        volume: float
         close_ts: int
         quote_asset_value: float
         number_of_trades: int
         taker_buy_base_asset_value: float
         take_buy_quote_asset_value: float
         ignored: int
-
