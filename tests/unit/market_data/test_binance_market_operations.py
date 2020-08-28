@@ -6,8 +6,7 @@ from binance import client
 @pytest.fixture
 def binance_market_operator():
     exchange_factory = class_builders.get("market").get("binance")()
-    market_requester = exchange_factory.create_market_requester()
-    market_operator = exchange_factory.create_market_operations(market_requester)
+    market_operator = exchange_factory.create_market_operations()
     return market_operator
 
 

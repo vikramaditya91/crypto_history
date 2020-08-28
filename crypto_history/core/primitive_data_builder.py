@@ -3,11 +3,11 @@ import logging
 import pandas as pd
 import xarray as xr
 from pandas import DataFrame
-from dataclasses import dataclass, fields
-from typing import Union, List, Dict
+from dataclasses import dataclass, fields, asdict
+from typing import Union, List, Dict, Iterable
 from datetime import datetime
 from .tickers import TickerPool
-from .get_market_data import StockMarketFactory
+from .stock_market_factory import StockMarketFactory
 from ..utilities import general_utilities, exceptions
 
 logger = logging.getLogger(__name__)
@@ -269,7 +269,7 @@ class DataFrameOperations:
         return df.drop(unnecessary_columns, axis=1)
 
     async def get_compatible_df(
-        self, standard_example: List, ticker_history: DataFrame
+        self, standard_example: List, ticker_history: Iterable
     ) -> DataFrame:
         """
         Makes the ticker history compatible to the standard \

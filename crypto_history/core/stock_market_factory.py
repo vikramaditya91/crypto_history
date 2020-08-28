@@ -58,9 +58,14 @@ class StockMarketFactory(AbstractFactory):
         """
         pass
 
+    @staticmethod
+    @abstractmethod
+    def create_ohlcv_field_types() -> AbstractOHLCVFieldTypes:
+        pass
+
 
 @register_factory("market")
-class ConcreteBinanceFactory:
+class ConcreteBinanceFactory(StockMarketFactory):
     """Binance's factory for creating factories"""
 
     @staticmethod
@@ -94,7 +99,12 @@ class ConcreteBinanceFactory:
 
         """
         market_operator = self.create_market_operations()
-        return BinanceHomogenizer(market_operator)
+        type_checker = self.create_ohlcv_field_types()
+        return BinanceHomogenizer(market_operator, type_checker)
+
+    @staticmethod
+    def create_ohlcv_field_types() -> BinanceOHLCVFieldTypes:
+        return BinanceOHLCVFieldTypes()
 
 
 @register_factory("market")
@@ -115,6 +125,10 @@ class ConcreteSomeOtherExchangeFactory(StockMarketFactory):
     @staticmethod
     def create_data_homogenizer() -> SomeOtherExchangeHomogenizer:
         """Creates the instance of the Market Homogenizer"""
+        raise NotImplementedError
+
+    @staticmethod
+    def create_ohlcv_field_types() -> AbstractOHLCVFieldTypes:
         raise NotImplementedError
 
 
@@ -308,7 +322,7 @@ class AbstractMarketHomogenizer(ABC):
     OHLCVFields = None
     # TODO Make it an abstractmethod
 
-    def __init__(self, market_operations):
+    def __init__(self, market_operations, type_checker):
         """
         Initializes the class with the instance of the corresponding \
         market operator
@@ -318,6 +332,7 @@ class AbstractMarketHomogenizer(ABC):
             the corresponding market operator
         """
         self.market_operator = market_operations
+        self.type_checker = type_checker
 
     @abstractmethod
     async def get_all_coins_ticker_objects(self) -> TickerPool:
@@ -364,6 +379,7 @@ class AbstractMarketHomogenizer(ABC):
         """
         pass
 
+    # TODO
     def get_all_ohlcv_fields(self):
         """Gets all the fields from the historical named tuple"""
         return self.OHLCVFields._fields
@@ -380,35 +396,11 @@ class AbstractMarketHomogenizer(ABC):
     def get_all_raw_tickers(self):
         pass
 
+    def get_named_ohlcv_tuple(self):
+        return self.type_checker.get_named_tuple()
+
 
 class BinanceHomogenizer(AbstractMarketHomogenizer):
-    # Do not consider a dataclass as there is no vectorized method to convert to pd.DataFrame
-    OHLCVFields = namedtuple(
-        "OHLCVFields",
-        [
-            "open_ts",
-            "open",
-            "high",
-            "low",
-            "close",
-            "volume",
-            "close_ts",
-            "quote_asset_value",
-            "number_of_trades",
-            "taker_buy_base_asset_value",
-            "take_buy_quote_asset_value",
-            "ignored",
-        ],
-    )
-    """Fields for the named tuple of the OHLCV returned by Binance \
-    get_klines_history
-            See Also: https://github.com/binance-exchange/\
-            binance-official-api-docs/blob/master/\
-            rest-api.md#klinecandlestick-data
-            See :meth:`binance.AsyncClient.get_historical_klines` in \
-            :py:mod:`python-binance`
-    """
-
     async def get_exchange_assets(self, type_of_asset: str) -> Generator:
         """
         Obtains the type of asset from the exchange.
@@ -544,7 +536,8 @@ class BinanceHomogenizer(AbstractMarketHomogenizer):
         raw_history = await self.market_operator.get_raw_history_for_ticker(
             *args, **kwargs
         )
-        return map(lambda x: self.OHLCVFields(*x), raw_history)
+        named_tuple_instance = self.get_named_ohlcv_tuple()
+        return map(lambda x: named_tuple_instance(*x), raw_history)
 
 
 class SomeOtherExchangeHomogenizer(AbstractMarketHomogenizer):
@@ -571,3 +564,39 @@ class SomeOtherExchangeHomogenizer(AbstractMarketHomogenizer):
 
     def get_all_raw_tickers(self):
         raise NotImplementedError
+
+
+class AbstractOHLCVFieldTypes(ABC):
+    class OHLCVFields:
+        pass
+
+    # Do not consider a dataclass as I could not
+    # find a quick way to get data in a df from data
+    def get_named_tuple(self):
+        return namedtuple(self.OHLCVFields.__name__,
+                          self.OHLCVFields.__annotations__.keys())
+
+
+class BinanceOHLCVFieldTypes(AbstractOHLCVFieldTypes):
+    """Fields for the named tuple of the OHLCV returned by Binance \
+    get_klines_history
+            See Also: https://github.com/binance-exchange/\
+            binance-official-api-docs/blob/master/\
+            rest-api.md#klinecandlestick-data
+            See :meth:`binance.AsyncClient.get_historical_klines` in \
+            :py:mod:`python-binance`
+    """
+    class OHLCVFields:
+        open_ts: int
+        open: float
+        high: float
+        low: float
+        close: float
+        volume:  float
+        close_ts: int
+        quote_asset_value: float
+        number_of_trades: int
+        taker_buy_base_asset_value: float
+        take_buy_quote_asset_value: float
+        ignored: int
+

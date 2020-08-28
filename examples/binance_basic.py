@@ -14,11 +14,11 @@ async def main():
 
     binance_homogenizer = exchange_factory.create_data_homogenizer()
     base_assets = await binance_homogenizer.get_all_base_assets()
-    base_assets = base_assets[::40]
+    base_assets = base_assets[::]
     # base_assets = ["NANO", "IOST", "XRP"]
     time_aggregated_data_container = data_container_pre.TimeAggregatedDataContainer(exchange_factory,
                                                                                     base_assets=base_assets,
-                                                                                    reference_assets=["USDT"],
+                                                                                    reference_assets=["BTC"],
                                                                                     ohlcv_fields=desired_fields,
                                                                                     start_ts="25 Jan 2020",
                                                                                     end_ts="27 May 2020",
