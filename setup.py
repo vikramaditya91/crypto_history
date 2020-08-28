@@ -44,7 +44,7 @@ setup(
     name=PACKAGE_NAME,
     author="Vikramaditya Gaonkar",
     author_email="vikramaditya91@gmail.com",
-    python_requires=">3.8.0",
+    python_requires=">=3.8.0",
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Environment :: Console",
