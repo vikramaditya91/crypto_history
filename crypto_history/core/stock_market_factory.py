@@ -379,11 +379,6 @@ class AbstractMarketHomogenizer(ABC):
         """
         pass
 
-    # TODO
-    def get_all_ohlcv_fields(self):
-        """Gets all the fields from the historical named tuple"""
-        return self.OHLCVFields._fields
-
     @abstractmethod
     def get_all_base_assets(self):
         pass
@@ -557,9 +552,6 @@ class SomeOtherExchangeHomogenizer(AbstractMarketHomogenizer):
         raise NotImplementedError
 
     def get_all_base_assets(self):
-        raise NotImplementedError
-
-    def get_all_ohlcv_fields(self):
         raise NotImplementedError
 
     def get_all_raw_tickers(self):

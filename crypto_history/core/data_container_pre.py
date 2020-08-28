@@ -341,10 +341,6 @@ class TimeStampIndexedDataContainer:
         return standard_diff * ratio
 
     @staticmethod
-    def clear_df_of_illegitimate_values(df: pd.DataFrame):
-        pass
-
-    @staticmethod
     def get_df_to_insert(
         sub_dataarray: xr.DataArray,
         index_of_integrating_ts: int,
@@ -409,6 +405,8 @@ class TimeStampIndexedDataContainer:
 
         """
         reference_ts = new_dataarray.timestamp.values.tolist()
+        # FixMe This is probably not the quickest way to get a new dataarray.
+        # Particularly, for non-approximated method should be reindixable?
         for base_coin_iter in old_dataarray:
             for ref_coin_iter in base_coin_iter:
                 try:

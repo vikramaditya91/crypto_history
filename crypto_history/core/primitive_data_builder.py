@@ -52,6 +52,7 @@ class PrimitiveCoinHistoryObtainer:
         self.example_raw_history = None
 
     async def initialize_example(self) -> List:
+        # FixMe The TimeIndexedDataContainer something similar. Should be centralized?
         """
         Initializes an example of the raw history and stores\
          it example_raw_history

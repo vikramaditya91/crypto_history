@@ -1,6 +1,9 @@
 Changelog
 =========
 
+1.1a3 (2020-Aug-28)
+------------------
+ * xr.DataArray obtained indexed by the timestamp of user's choice
 
 1.1a2 (2020-Aug-25)
 ------------------
