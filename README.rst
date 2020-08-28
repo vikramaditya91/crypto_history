@@ -24,8 +24,8 @@ Welcome to crypto-history
     :alt: crypto-history download status per week
 
 .. image:: https://coveralls.io/repos/github/vikramaditya91/crypto_history/badge.svg?branch=feature/match-index-dataframe
-     :target: https://coveralls.io/github/vikramaditya91/crypto_history?branch=feature/match-index-dataframe
-     :alt: crypto-history coveralls coverage
+    :target: https://coveralls.io/github/vikramaditya91/crypto_history?branch=feature/match-index-dataframe
+    :alt: crypto-history coveralls coverage
 
 
 This is a wrapper on binance and other exchange APIs to aggregate historical information
@@ -54,7 +54,7 @@ Quick Start
 
     pip install crypto-history
 
-See :file:`examples/binance_basic.py` for a working example
+See `examples/binance_basic.py <https://github.com/vikramaditya/crypto_history/examples/binance_basic.py>`_ for a working example
 
 .. code:: python
 
