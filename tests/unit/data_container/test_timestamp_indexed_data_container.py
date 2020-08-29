@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from mock import Mock
 import xarray as xr
-from crypto_history import data_container_pre
+from crypto_history import data_container
 from crypto_history import class_builders
 from ...helpers_test_utilities import async_return
 
@@ -12,7 +12,7 @@ from ...helpers_test_utilities import async_return
 def sample_time_stamp_indexed_data_container():
     """Instance of TimeStampIndexedDataContainer class"""
     binance_factory = class_builders.get("market").get("binance")()
-    timestamp_indexed_container = data_container_pre.\
+    timestamp_indexed_container = data_container.\
         TimeStampIndexedDataContainer(
             exchange_factory=binance_factory,
             base_assets=["NANO", "XMR"],
@@ -21,9 +21,8 @@ def sample_time_stamp_indexed_data_container():
             aggregate_coordinate_by="open_ts",
             ohlcv_fields=["open_ts", "open", "close_ts"],
             weight="1d",
-            start_str="25 May 2020",
-            end_str="29 May 2020",
-            limit=100,
+            start_time="25 May 2020",
+            end_time="29 May 2020",
         )
     return timestamp_indexed_container
 

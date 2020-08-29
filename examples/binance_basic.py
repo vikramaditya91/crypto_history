@@ -1,9 +1,9 @@
 import asyncio
 from pprint import pprint
 from dataclasses import replace
-from crypto_history import class_builders, init_logger, data_container_pre
+from crypto_history import class_builders, init_logger, data_container
 import logging
-
+from binance import client
 
 async def main():
     init_logger(level=logging.DEBUG)
@@ -15,14 +15,17 @@ async def main():
     binance_homogenizer = exchange_factory.create_data_homogenizer()
     base_assets = await binance_homogenizer.get_all_base_assets()
     base_assets = base_assets[::]
-    # base_assets = ["NANO", "IOST", "XRP"]
-    time_aggregated_data_container = data_container_pre.TimeAggregatedDataContainer(exchange_factory,
-                                                                                    base_assets=base_assets,
-                                                                                    reference_assets=["BTC"],
-                                                                                    ohlcv_fields=desired_fields,
-                                                                                    start_ts="25 Jan 2020",
-                                                                                    end_ts="27 May 2020",
-                                                                                    details_of_ts="d")
+    base_assets = ["NANO", "IOST", "XRP"]
+
+    time_range = {("25 Jan 2020", "27 May 2020"): "1h",
+                  ("27 May 2020", "27 Aug 2020"): "1d",
+                  ("26 Aug 2020", "now"):         "1m"}
+    time_aggregated_data_container = data_container.TimeAggregatedDataContainer(exchange_factory,
+                                                                                base_assets=base_assets,
+                                                                                reference_assets=["BTC"],
+                                                                                ohlcv_fields=desired_fields,
+                                                                                time_range_dict=time_range,
+                                                                                )
     xdataset_of_coins = await time_aggregated_data_container.get_time_aggregated_data_container()
     pprint(xdataset_of_coins)
 

@@ -21,9 +21,8 @@ class PrimitiveCoinHistoryObtainer:
         self,
         exchange_factory: StockMarketFactory,
         interval: str,
-        start_str: Union[str, datetime],
-        end_str: Union[str, datetime],
-        limit: int,
+        start_time: Union[str, datetime, int],
+        end_time: Union[str, datetime, int],
     ):
         """
         Generates the coin history obtainer
@@ -33,26 +32,20 @@ class PrimitiveCoinHistoryObtainer:
              the exchange_factory which is responsible for \
             setting the market_homogenizer
             interval(str): Length of the history of the klines per item
-            start_str(str|datetime): duration from which history is necessary
-            end_str(str|datetime): duration upto which history is necessary
-            limit(int): number of klines required maximum.\
-             Note that it is limited by 1000 by binance
+            start_time(str|datetime/int): duration from which history is necessary
+            end_time(str|datetime/int): duration upto which history is necessary
         """
-        assert (
-            limit <= 1000
-        ), "Binance will not accept intervals" \
-           " greater than 1000. Reduce it!"
         self.market_harmonizer = exchange_factory.create_data_homogenizer()
         self.data_container = None
         self.interval = interval
-        self.start_str = start_str
-        self.end_str = end_str
-        self.limit = limit
+        self.start_time = start_time
+        self.end_time = end_time
         self.ticker_pool = None
         self.example_raw_history = None
 
     async def initialize_example(self) -> List:
-        # FixMe The TimeIndexedDataContainer something similar. Should be centralized?
+        # FixMe The TimeIndexedDataContainer something similar.\
+        #  Should be centralized?
         """
         Initializes an example of the raw history and stores\
          it example_raw_history
@@ -83,9 +76,8 @@ class PrimitiveCoinHistoryObtainer:
         return await self.market_harmonizer.get_history_for_ticker(
             ticker=ticker_symbol,
             interval=self.interval,
-            start_str=self.start_str,
-            end_str=self.end_str,
-            limit=self.limit,
+            start_time=self.start_time,
+            end_time=self.end_time,
         )
 
     async def get_all_raw_tickers(self) -> TickerPool:
@@ -347,9 +339,8 @@ class PrimitiveDataArrayOperations:
         reference_assets: List,
         ohlcv_fields: List,
         interval: str,
-        start_str: str,
-        end_str: str,
-        limit: int,
+        start_time: Union[str, datetime, int],
+        end_time: Union[str, datetime, int],
     ):
         """
         Initializes the DataContainerOperations which is the user \
@@ -361,12 +352,11 @@ class PrimitiveDataArrayOperations:
              coins to be accumulated
             ohlcv_fields (List): list of fields for the various fields
             interval (str): data capture interval
-            start_str (str): date from which data collection should start
-            end_str (str): date up to which data collection should be made
-            limit (int): number of intervals/candle-sticks
+            start_time (str/datetime/int): date from which data collection should start
+            end_time (str/datetime/int): date up to which data collection should be made
         """
         self.history_obtainer = PrimitiveCoinHistoryObtainer(
-            exchange_factory, interval, start_str, end_str, limit
+            exchange_factory, interval, start_time, end_time
         )
         self.dimension_manager = PrimitiveDimensionsManager(
             self.history_obtainer
@@ -474,7 +464,7 @@ class PrimitiveDataArrayOperations:
             else:
                 history_df = self.dataframe_operations.\
                     drop_unnecessary_columns_from_df(
-                       history_df, coord_dimension_dataclass.ohlcv_fields
+                        history_df, coord_dimension_dataclass.ohlcv_fields
                     )
                 history_df = self.append_column_to_df(
                     history_df, "weight", self.interval

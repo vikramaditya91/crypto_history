@@ -1,10 +1,11 @@
 import logging
+import datetime
 import xarray as xr
 import numpy as np
 import pandas as pd
-from typing import List, Dict
+from typing import List, Dict, Union
 from .stock_market_factory import StockMarketFactory
-from .primitive_data_builder import PrimitiveDataArrayOperations
+from .primitive_data_pre import PrimitiveDataArrayOperations
 from ..utilities.exceptions import EmptyDataFrameException
 
 logger = logging.getLogger(__name__)
@@ -24,9 +25,8 @@ class TimeStampIndexedDataContainer:
         aggregate_coordinate_by: str,
         ohlcv_fields: List,
         weight: str,
-        start_str: str,
-        end_str: str,
-        limit: int,
+        start_time: Union[str, datetime.datetime, int],
+        end_time: Union[str, datetime.datetime, int],
     ):
         self.aggregate_coordinate_by = aggregate_coordinate_by
         self.primitive_full_data_container = PrimitiveDataArrayOperations(
@@ -35,9 +35,8 @@ class TimeStampIndexedDataContainer:
             reference_assets,
             ohlcv_fields,
             weight,
-            start_str,
-            end_str,
-            limit,
+            start_time,
+            end_time,
         )
         reference_base, reference_quote = reference_ticker
         self.primitive_reference_data_container = PrimitiveDataArrayOperations(
@@ -46,9 +45,8 @@ class TimeStampIndexedDataContainer:
             [reference_quote],
             ohlcv_fields,
             weight,
-            start_str,
-            end_str,
-            limit,
+            start_time,
+            end_time,
         )
         self.ohlcv_coord_name = "ohlcv_fields"
 
@@ -439,13 +437,11 @@ class TimeStampIndexedDataContainer:
 class TimeAggregatedDataContainer:
     def __init__(
         self,
-        exchange_factory,
+        exchange_factory: StockMarketFactory,
         base_assets,
         reference_assets,
         ohlcv_fields,
-        start_ts,
-        end_ts,
-        details_of_ts,
+        time_range_dict: Dict,
         reference_ticker=("ETH", "BTC"),
         aggregate_coordinate_by="open_ts",
     ):
@@ -453,30 +449,39 @@ class TimeAggregatedDataContainer:
         self.base_assets = base_assets
         self.reference_assets = reference_assets
         self.ohlcv_fields = ohlcv_fields
-        self.start_ts = start_ts
-        self.end_ts = end_ts
-        self.details_ts = details_of_ts
+        self.time_range_dict = time_range_dict
         self.reference_ticker = reference_ticker
         self.aggregate_coordinate_by = aggregate_coordinate_by
+        self.time_interval_splitter = (
+            exchange_factory.create_time_interval_chunks()
+        )
+
+    def get_time_interval_chunks(self, time_range: Dict):
+        return self.time_interval_splitter.get_time_range_for_historical_calls(
+            time_range
+        )
 
     async def get_time_aggregated_data_container(self):
-        interval = "1d"
-        time_stamp_indexed_container = TimeStampIndexedDataContainer(
-            self.exchange_factory,
-            self.base_assets,
-            self.reference_assets,
-            self.reference_ticker,
-            self.aggregate_coordinate_by,
-            self.ohlcv_fields,
-            interval,
-            start_str=self.start_ts,
-            end_str=self.end_ts,
-            limit=500,
-        )
-        return await time_stamp_indexed_container.\
-            get_xr_dataarray_indexed_by_timestamps(
-                do_approximation=False
+        chunks_of_time = self.get_time_interval_chunks(self.time_range_dict)
+        dataarrays = []
+        for (start_time, end_time), interval in chunks_of_time:
+            time_stamp_indexed_container = TimeStampIndexedDataContainer(
+                self.exchange_factory,
+                self.base_assets,
+                self.reference_assets,
+                self.reference_ticker,
+                self.aggregate_coordinate_by,
+                self.ohlcv_fields,
+                interval,
+                start_time=start_time,
+                end_time=end_time,
             )
+            history = await time_stamp_indexed_container.\
+                get_xr_dataarray_indexed_by_timestamps(
+                    do_approximation=False
+                )
+            dataarrays.append(history)
+        return dataarrays
 
     def create_chunks_of_requests(self):
         pass
