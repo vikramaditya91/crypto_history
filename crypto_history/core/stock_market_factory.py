@@ -621,6 +621,7 @@ class AbstractTimeIntervalChunks(ABC):
     exchanges have limits on the length of the interval of history"""
 
     limit = math.inf
+    url = ""
 
     string_match_timedelta_dict = {
         "m": datetime.timedelta(minutes=1),
@@ -810,7 +811,14 @@ class AbstractTimeIntervalChunks(ABC):
         """
         number_of_items = int(re.search("[0-9]+", time_string).group())
         string_to_match = re.search("[a-zA-Z]+", time_string).group()
-        timedelta_of_string = self.string_match_timedelta_dict[string_to_match]
+        try:
+            timedelta_of_string = self.string_match_timedelta_dict[
+                string_to_match
+            ]
+        except KeyError:
+            raise KeyError(f"{string_to_match} could not match with anything "
+                           f"in the exchange. \nVisit {self.url}"
+                           f" for possible intervals")
         return datetime.timedelta(
             seconds=(timedelta_of_string.total_seconds() * number_of_items)
         )
@@ -818,7 +826,8 @@ class AbstractTimeIntervalChunks(ABC):
 
 class BinanceTimeIntervalChunks(AbstractTimeIntervalChunks):
     """Binance specific information for the interval generation"""
-
+    url = "https://github.com/binance-exchange/binance-\
+    official-api-docs/blob/master/rest-api.md#enum-definitions"
     limit = 1000
 
     @staticmethod
