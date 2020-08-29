@@ -64,7 +64,7 @@ setup(
     install_requires=[
         'python-binance-async',
         'xarray',
-        'dateutil'
+        'python-dateutil'
     ],
     keywords="binance cryptocurrency xarray",
     license="Simplified BSD License",
