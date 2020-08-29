@@ -246,8 +246,8 @@ class BinanceMarketOperations(AbstractMarketOperations):
         self,
         ticker: Union[str],
         interval: str,
-        start_ts: int,
-        end_ts: int = None,
+        start_time: int,
+        end_time: int = None,
     ) -> List:
         """
         Gets the kline history of the ticker from binance exchange
@@ -256,8 +256,8 @@ class BinanceMarketOperations(AbstractMarketOperations):
             ticker (str): ticker whose history has to be pulled
             interval(str): interval of the history (eg. 1d, 3m, etc).\
             See :meth:`binance.enums` in :py:mod:`python-binance`
-            start_ts(int): Start date string in exchange-format
-            end_ts(int): End date string in exchange-format
+            start_time(int): Start date string in exchange-format
+            end_time(int): End date string in exchange-format
 
         Returns:
              list: List of snapshots of history.
@@ -270,8 +270,8 @@ class BinanceMarketOperations(AbstractMarketOperations):
             "get_historical_klines",
             ticker,
             binance_interval,
-            start_ts,
-            end_ts,
+            start_time,
+            end_time,
         )
 
     async def get_all_raw_tickers(self):
@@ -667,6 +667,7 @@ class AbstractTimeIntervalChunks(ABC):
                 final_time_range.append((chunk, type_of_interval))
                 for chunk in sanitized_sub_chunks
             ]
+        logger.info(f"The time histories have been chunked into {final_time_range}")
         return final_time_range
 
     def get_exchange_specific_sub_chunks(
@@ -816,9 +817,11 @@ class AbstractTimeIntervalChunks(ABC):
                 string_to_match
             ]
         except KeyError:
-            raise KeyError(f"{string_to_match} could not match with anything "
-                           f"in the exchange. \nVisit {self.url}"
-                           f" for possible intervals")
+            raise KeyError(
+                f"{string_to_match} could not match with anything "
+                f"in the exchange. \nVisit {self.url}"
+                f" for possible intervals"
+            )
         return datetime.timedelta(
             seconds=(timedelta_of_string.total_seconds() * number_of_items)
         )
@@ -826,6 +829,7 @@ class AbstractTimeIntervalChunks(ABC):
 
 class BinanceTimeIntervalChunks(AbstractTimeIntervalChunks):
     """Binance specific information for the interval generation"""
+
     url = "https://github.com/binance-exchange/binance-\
     official-api-docs/blob/master/rest-api.md#enum-definitions"
     limit = 1000

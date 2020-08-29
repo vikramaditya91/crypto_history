@@ -17,9 +17,8 @@ async def main():
     base_assets = base_assets[::]
     base_assets = ["NANO", "IOST", "XRP"]
 
-    time_range = {("25 Jan 2020", "27 May 2020"): "1h",
-                  ("27 May 2020", "27 Aug 2020"): "1d",
-                  ("26 Aug 2020", "now"):         "1m"}
+    time_range = {("25 Jan 2020", "27 May 2020"): "1d",
+                  ("26 Aug 2020", "now"):         "1h"}
     time_aggregated_data_container = data_container.TimeAggregatedDataContainer(exchange_factory,
                                                                                 base_assets=base_assets,
                                                                                 reference_assets=["BTC"],

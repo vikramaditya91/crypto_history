@@ -3,7 +3,7 @@ import datetime
 import xarray as xr
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Tuple
 from .stock_market_factory import StockMarketFactory
 from .data_container_pre import PrimitiveDataArrayOperations
 from ..utilities.exceptions import EmptyDataFrameException
@@ -438,12 +438,12 @@ class TimeAggregatedDataContainer:
     def __init__(
         self,
         exchange_factory: StockMarketFactory,
-        base_assets,
-        reference_assets,
-        ohlcv_fields,
+        base_assets: List[str],
+        reference_assets: List[str],
+        ohlcv_fields: List[str],
         time_range_dict: Dict,
-        reference_ticker=("ETH", "BTC"),
-        aggregate_coordinate_by="open_ts",
+        reference_ticker: tuple = ("ETH", "BTC"),
+        aggregate_coordinate_by: str = "open_ts",
     ):
         self.exchange_factory = exchange_factory
         self.base_assets = base_assets
@@ -456,32 +456,119 @@ class TimeAggregatedDataContainer:
             exchange_factory.create_time_interval_chunks()
         )
 
-    def get_time_interval_chunks(self, time_range: Dict):
+    def get_time_interval_chunks(self, time_range: Dict) -> List[tuple]:
+        """
+        Gets the time interval chunks from the raw dict provided
+        Args:
+            time_range: Dict with key=tuple of start and end time\
+                                  value=type of klines/intervals
+
+        Returns:
+            List of tuples with the individual requests for histories
+                     ((start time, end time), interval)
+
+        """
         return self.time_interval_splitter.get_time_range_for_historical_calls(
             time_range
         )
 
-    async def get_time_aggregated_data_container(self):
-        chunks_of_time = self.get_time_interval_chunks(self.time_range_dict)
-        dataarrays = []
-        for (start_time, end_time), interval in chunks_of_time:
-            time_stamp_indexed_container = TimeStampIndexedDataContainer(
-                self.exchange_factory,
-                self.base_assets,
-                self.reference_assets,
-                self.reference_ticker,
-                self.aggregate_coordinate_by,
-                self.ohlcv_fields,
-                interval,
-                start_time=start_time,
-                end_time=end_time,
-            )
-            history = await time_stamp_indexed_container.\
-                get_xr_dataarray_indexed_by_timestamps(
-                    do_approximation=False
-                )
-            dataarrays.append(history)
-        return dataarrays
+    @staticmethod
+    def concatenate_dataarray_in_coord(
+        *dataarray: Union[List[xr.DataArray], Tuple[xr.DataArray]],
+        coordinate="timestamp",
+    ) -> xr.DataArray:
+        """
+        Concatenates two histories in the coordinate desired
+        Args:
+            dataarray List[xr.DataArray]: List/Tuple of xr.DataArrays \
+                that need to be concatednated
+            coordinate: coordinate direction to concat by
 
-    def create_chunks_of_requests(self):
-        pass
+        Returns:
+            Concatenated xr.DataArray consisting of all the data concatenated
+
+        """
+        return xr.concat(
+            list(filter(lambda x: x is not None, dataarray)), dim=coordinate
+        )
+
+    async def get_chunk_history(
+        self,
+        interval: str,
+        start_time: Union[str, datetime.datetime, int],
+        end_time: Union[str, datetime.datetime, int],
+    ) -> xr.DataArray:
+        """
+        Gets the history of the particular chunk whose start and end
+        times are well defined
+        Args:
+            interval (str): The exchanges interval
+            start_time (datetime/str/int): the start-time of the \
+                        chunk of history
+            end_time: (datetime/str/int): the end-time of the \
+                        chunk of history
+
+        Returns:
+            xr.DataArray the history of the chunk
+
+        """
+        time_stamp_indexed_container = TimeStampIndexedDataContainer(
+            self.exchange_factory,
+            self.base_assets,
+            self.reference_assets,
+            self.reference_ticker,
+            self.aggregate_coordinate_by,
+            self.ohlcv_fields,
+            interval,
+            start_time=start_time,
+            end_time=end_time,
+        )
+        return await time_stamp_indexed_container.\
+            get_xr_dataarray_indexed_by_timestamps(
+                do_approximation=False
+            )
+
+    async def get_time_aggregated_data_container(
+        self, sort: bool = True
+    ) -> xr.DataArray:
+        """
+        Gets time aggregated data container by splitting
+         the containers as required
+        Args:
+            sort (bool): to check if the data is to be sorted \
+            in an increasing order
+
+        Returns:
+            xr.DataArray The complete history of the interval
+
+        """
+        chunks_of_time = self.get_time_interval_chunks(self.time_range_dict)
+        chunks = []
+        for (start_time, end_time), interval in chunks_of_time:
+            chunk_history = await self.get_chunk_history(
+                interval, start_time, end_time
+            )
+            chunks.append(chunk_history)
+        overall_history = self.concatenate_dataarray_in_coord(*chunks)
+        if sort is True:
+            overall_history = self.get_sorted_dataarray(
+                overall_history, "timestamp"
+            )
+        return overall_history
+
+    @staticmethod
+    def get_sorted_dataarray(
+        dataarray: xr.DataArray, coordinate: str
+    ) -> xr.DataArray:
+        """
+        Sorts the given dataarray in the given coordinate direction
+        Args:
+            dataarray (xr.DataArray): The dataarray which has to be sorted
+            coordinate: sort the dataarray in the particular \
+                direction of the coordinate
+
+        Returns:
+            xr.DataArray The sorted dataarray
+
+        """
+        return dataarray.sortby(coordinate, ascending=False)
