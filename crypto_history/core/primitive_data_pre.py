@@ -32,8 +32,10 @@ class PrimitiveCoinHistoryObtainer:
              the exchange_factory which is responsible for \
             setting the market_homogenizer
             interval(str): Length of the history of the klines per item
-            start_time(str|datetime/int): duration from which history is necessary
-            end_time(str|datetime/int): duration upto which history is necessary
+            start_time(str|datetime/int): duration from which history \
+               is necessary
+            end_time(str|datetime/int): duration upto which history \
+               is necessary
         """
         self.market_harmonizer = exchange_factory.create_data_homogenizer()
         self.data_container = None
@@ -352,8 +354,10 @@ class PrimitiveDataArrayOperations:
              coins to be accumulated
             ohlcv_fields (List): list of fields for the various fields
             interval (str): data capture interval
-            start_time (str/datetime/int): date from which data collection should start
-            end_time (str/datetime/int): date up to which data collection should be made
+            start_time (str/datetime/int): date from which data collection \
+                should start
+            end_time (str/datetime/int): date up to which data collection \
+                should be made
         """
         self.history_obtainer = PrimitiveCoinHistoryObtainer(
             exchange_factory, interval, start_time, end_time

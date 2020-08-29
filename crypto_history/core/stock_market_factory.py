@@ -6,7 +6,7 @@ import re
 from dateutil import parser
 import datetime
 from abc import ABC, abstractmethod
-from typing import Union, Optional, List, Dict, Generator
+from typing import Union, List, Dict, Generator
 from functools import lru_cache
 from collections import namedtuple
 from binance import enums, client
