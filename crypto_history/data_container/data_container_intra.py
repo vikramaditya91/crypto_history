@@ -4,7 +4,7 @@ import xarray as xr
 import numpy as np
 import pandas as pd
 from typing import List, Dict, Union, Tuple
-from .stock_market_factory import StockMarketFactory
+from crypto_history.stock_market.stock_market_factory import StockMarketFactory
 from .data_container_pre import PrimitiveDataArrayOperations
 from ..utilities.exceptions import EmptyDataFrameException
 

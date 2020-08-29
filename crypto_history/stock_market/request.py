@@ -5,7 +5,7 @@ from binance import exceptions
 from binance.client import AsyncClient
 from abc import ABC
 from datetime import timedelta
-from ..utilities.general_utilities import TokenBucket, RetryModel
+from crypto_history.utilities.general_utilities import TokenBucket, RetryModel
 
 
 logger = logging.getLogger(__name__)

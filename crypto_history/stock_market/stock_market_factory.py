@@ -11,13 +11,13 @@ from functools import lru_cache
 from collections import namedtuple
 from binance import enums, client
 from dataclasses import make_dataclass
-from .tickers import BinanceTickerPool, TickerPool
-from .request import (
+from crypto_history.stock_market.tickers import BinanceTickerPool, TickerPool
+from crypto_history.stock_market.request import (
     AbstractMarketRequester,
     BinanceRequester,
     SomeOtherExchangeRequester,
 )
-from ..utilities.general_utilities import (
+from crypto_history.utilities.general_utilities import (
     AbstractFactory,
     register_factory,
     get_dataclass_from_dict,
