@@ -667,7 +667,8 @@ class AbstractTimeIntervalChunks(ABC):
                 final_time_range.append((chunk, type_of_interval))
                 for chunk in sanitized_sub_chunks
             ]
-        logger.info(f"The time histories have been chunked into {final_time_range}")
+        logger.info(f"The time histories have been chunked into"
+                    f" {final_time_range}")
         return final_time_range
 
     def get_exchange_specific_sub_chunks(

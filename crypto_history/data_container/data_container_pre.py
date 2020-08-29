@@ -1,6 +1,5 @@
 from __future__ import annotations
 import logging
-import pandas as pd
 import xarray as xr
 from pandas import DataFrame
 from dataclasses import dataclass, fields
@@ -295,7 +294,7 @@ class PrimitiveDataArrayOperations:
         Args:
             base_asset (str): base asset of the coin
             reference_asset (str): reference asset of the coin
-            history_df (pd.DataFrame): data frame of the coin history
+            history_df (pandas.DataFrame): data frame of the coin history
 
         Returns:
             None
