@@ -856,7 +856,3 @@ class SomeOtherTimeIntervalChunks(AbstractTimeIntervalChunks):
     @staticmethod
     def sanitize_datetime_to_exchange_specific(datetime_obj):
         pass
-
-    @staticmethod
-    def get_time_range_for_historical_calls(*args, **kwargs):
-        raise NotImplementedError
