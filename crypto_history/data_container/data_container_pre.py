@@ -1,13 +1,13 @@
 from __future__ import annotations
 import logging
-import pandas as pd
 import xarray as xr
 from pandas import DataFrame
 from dataclasses import dataclass, fields
-from typing import Union, List, Dict, Iterable
+from typing import Union, List, Dict
 from datetime import datetime
-from .tickers import TickerPool
-from .stock_market_factory import StockMarketFactory
+from crypto_history.stock_market.tickers import TickerPool
+from crypto_history.stock_market.stock_market_factory import StockMarketFactory
+from .utilities import DataFrameOperations
 from ..utilities import general_utilities, exceptions
 
 logger = logging.getLogger(__name__)
@@ -21,9 +21,8 @@ class PrimitiveCoinHistoryObtainer:
         self,
         exchange_factory: StockMarketFactory,
         interval: str,
-        start_str: Union[str, datetime],
-        end_str: Union[str, datetime],
-        limit: int,
+        start_time: Union[str, datetime, int],
+        end_time: Union[str, datetime, int],
     ):
         """
         Generates the coin history obtainer
@@ -33,26 +32,22 @@ class PrimitiveCoinHistoryObtainer:
              the exchange_factory which is responsible for \
             setting the market_homogenizer
             interval(str): Length of the history of the klines per item
-            start_str(str|datetime): duration from which history is necessary
-            end_str(str|datetime): duration upto which history is necessary
-            limit(int): number of klines required maximum.\
-             Note that it is limited by 1000 by binance
+            start_time(str/datetime/int): duration from which history \
+               is necessary
+            end_time(str/datetime/int): duration up to which history \
+               is necessary
         """
-        assert (
-            limit <= 1000
-        ), "Binance will not accept intervals" \
-           " greater than 1000. Reduce it!"
         self.market_harmonizer = exchange_factory.create_data_homogenizer()
         self.data_container = None
         self.interval = interval
-        self.start_str = start_str
-        self.end_str = end_str
-        self.limit = limit
+        self.start_time = start_time
+        self.end_time = end_time
         self.ticker_pool = None
         self.example_raw_history = None
 
     async def initialize_example(self) -> List:
-        # FixMe The TimeIndexedDataContainer something similar. Should be centralized?
+        # FixMe The TimeIndexedDataContainer something similar.\
+        #  Should be centralized?
         """
         Initializes an example of the raw history and stores\
          it example_raw_history
@@ -83,9 +78,8 @@ class PrimitiveCoinHistoryObtainer:
         return await self.market_harmonizer.get_history_for_ticker(
             ticker=ticker_symbol,
             interval=self.interval,
-            start_str=self.start_str,
-            end_str=self.end_str,
-            limit=self.limit,
+            start_time=self.start_time,
+            end_time=self.end_time,
         )
 
     async def get_all_raw_tickers(self) -> TickerPool:
@@ -226,117 +220,6 @@ class PrimitiveDimensionsManager:
         )
 
 
-class DataFrameOperations:
-    @staticmethod
-    def calculate_rows_to_add(
-        df: DataFrame, list_of_standard_history: List
-    ) -> int:
-        """
-        Calculates the additional number of rows that might have \
-        to be added to get the df in the same shape
-
-        Args:
-            df(pd.DataFrame): pandas dataframe which is obtained\
-             for the coin's history
-            list_of_standard_history: expected standard history\
-             which has the complete history
-
-        Returns:
-             int: number of rows that have to be added to the df
-
-        """
-        df_rows, _ = df.shape
-        expected_rows = len(list_of_standard_history)
-        return expected_rows - df_rows
-
-    @staticmethod
-    def drop_unnecessary_columns_from_df(
-        df, necessary_columns: List
-    ) -> DataFrame:
-        """
-        Drop all columns which are not necessary from the df
-        Args:
-            df (pd.DataFrame): from which the unnecessary columns\
-             are to be dropped
-            necessary_columns (list): list of columns which are\
-             to be stored
-
-        Returns:
-            pd.DataFrame where the unnecessary columns are dropped
-        """
-        unnecessary_columns = [
-            col for col in df.columns if col not in necessary_columns
-        ]
-        return df.drop(unnecessary_columns, axis=1)
-
-    async def get_compatible_df(
-        self, standard_example: List, ticker_history: Iterable
-    ) -> DataFrame:
-        """
-        Makes the ticker history compatible to the standard \
-        pd.DataFrame by extending the shape to add null values
-
-        Args:
-            standard_example (DataFrame): standard example to know \
-            how many rows to pad
-            ticker_history: history of the current ticker
-
-        Returns:
-             pd.DataFrame: compatible history of the df adjusted for \
-             same rows as expected
-
-        """
-        # TODO Assuming that the df is only not filled in the bottom
-        history_df = pd.DataFrame(ticker_history)
-        if history_df.empty:
-            raise exceptions.EmptyDataFrameException
-        padded_df = await self.pad_extra_rows_if_necessary(
-            standard_example, history_df
-        )
-        return padded_df
-
-    @staticmethod
-    def add_extra_rows_to_bottom(df: pd.DataFrame, empty_rows_to_add: int):
-        """
-        Adds extra rows to the pd.DataFrame
-
-        Args:
-            df(pd.DataFrame): to which extra rows are to be added
-            empty_rows_to_add(int): Number of extra rows that have to be added
-
-        Returns:
-             pd.DataFrame: Re-indexed pd.DataFrame which has \
-             the compatible number of rows
-
-        """
-        new_indices_to_add = list(
-            range(df.index[-1] + 1, df.index[-1] + 1 + empty_rows_to_add)
-        )
-        return df.reindex(df.index.to_list() + new_indices_to_add)
-
-    async def pad_extra_rows_if_necessary(
-        self, standard_example: List, history_df: DataFrame
-    ) -> DataFrame:
-        """
-        Add extra rows on the bottom of the DF is necessary. i.e \
-        when the history is incomplete.
-        # FixMe . Probably needs to be reevaluated
-        Args:
-            standard_example (DataFrame): standard example on which\
-             it is based
-            history_df: history of the dataframe that has not been\
-             padded yet
-
-        Returns:
-            pd.DataFrame: that has been padded
-
-        """
-        rows_to_add = self.calculate_rows_to_add(history_df, standard_example)
-        if rows_to_add > 0:
-            history_df = self.add_extra_rows_to_bottom(history_df, rows_to_add)
-        return history_df
-
-
 class PrimitiveDataArrayOperations:
     """Abstract Base Class for generating the data operations"""
 
@@ -347,9 +230,8 @@ class PrimitiveDataArrayOperations:
         reference_assets: List,
         ohlcv_fields: List,
         interval: str,
-        start_str: str,
-        end_str: str,
-        limit: int,
+        start_time: Union[str, datetime, int],
+        end_time: Union[str, datetime, int],
     ):
         """
         Initializes the DataContainerOperations which is the user \
@@ -361,12 +243,13 @@ class PrimitiveDataArrayOperations:
              coins to be accumulated
             ohlcv_fields (List): list of fields for the various fields
             interval (str): data capture interval
-            start_str (str): date from which data collection should start
-            end_str (str): date up to which data collection should be made
-            limit (int): number of intervals/candle-sticks
+            start_time (str/datetime/int): date from which data collection \
+                should start
+            end_time (str/datetime/int): date up to which data collection \
+                should be made
         """
         self.history_obtainer = PrimitiveCoinHistoryObtainer(
-            exchange_factory, interval, start_str, end_str, limit
+            exchange_factory, interval, start_time, end_time
         )
         self.dimension_manager = PrimitiveDimensionsManager(
             self.history_obtainer
@@ -411,7 +294,7 @@ class PrimitiveDataArrayOperations:
         Args:
             base_asset (str): base asset of the coin
             reference_asset (str): reference asset of the coin
-            history_df (pd.DataFrame): data frame of the coin history
+            history_df (pandas.DataFrame): data frame of the coin history
 
         Returns:
             None
@@ -474,7 +357,7 @@ class PrimitiveDataArrayOperations:
             else:
                 history_df = self.dataframe_operations.\
                     drop_unnecessary_columns_from_df(
-                       history_df, coord_dimension_dataclass.ohlcv_fields
+                        history_df, coord_dimension_dataclass.ohlcv_fields
                     )
                 history_df = self.append_column_to_df(
                     history_df, "weight", self.interval

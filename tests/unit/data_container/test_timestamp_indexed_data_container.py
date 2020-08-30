@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from mock import Mock
 import xarray as xr
-from crypto_history import data_container_pre
+from crypto_history import data_container_access
 from crypto_history import class_builders
 from ...helpers_test_utilities import async_return
 
@@ -12,8 +12,8 @@ from ...helpers_test_utilities import async_return
 def sample_time_stamp_indexed_data_container():
     """Instance of TimeStampIndexedDataContainer class"""
     binance_factory = class_builders.get("market").get("binance")()
-    timestamp_indexed_container = data_container_pre.\
-        TimeStampIndexedDataContainer(
+    timestamp_indexed_container = \
+        data_container_access.TimeStampIndexedDataContainer(
             exchange_factory=binance_factory,
             base_assets=["NANO", "XMR"],
             reference_assets=["USDT", "XRP"],
@@ -21,9 +21,8 @@ def sample_time_stamp_indexed_data_container():
             aggregate_coordinate_by="open_ts",
             ohlcv_fields=["open_ts", "open", "close_ts"],
             weight="1d",
-            start_str="25 May 2020",
-            end_str="29 May 2020",
-            limit=100,
+            start_time="25 May 2020",
+            end_time="29 May 2020",
         )
     return timestamp_indexed_container
 
@@ -253,8 +252,8 @@ async def test_get_primitive_time_approx_xr_dataarray(
     sample_approximated_time_indexed_array,
 ):
     """Test to confirm the approximated time-stamp indexes"""
-    sample_time_stamp_indexed_data_container.get_primitive_full_xr_dataarray =\
-        Mock(
+    sample_time_stamp_indexed_data_container.\
+        get_primitive_full_xr_dataarray = Mock(
             return_value=async_return(sample_full_xr_dataarray)
         )
     sample_time_stamp_indexed_data_container.\

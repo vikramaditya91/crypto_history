@@ -24,8 +24,8 @@ Welcome to crypto-history
     :alt: crypto-history download status per week
 
 .. image:: https://coveralls.io/repos/github/vikramaditya91/crypto_history/badge.svg?branch=feature/match-index-dataframe
-     :target: https://coveralls.io/github/vikramaditya91/crypto_history?branch=feature/match-index-dataframe
-     :alt: crypto-history coveralls coverage
+    :target: https://coveralls.io/github/vikramaditya91/crypto_history?branch=feature/match-index-dataframe
+    :alt: crypto-history coveralls coverage
 
 
 This is a wrapper on binance and other exchange APIs to aggregate historical information
@@ -54,22 +54,29 @@ Quick Start
 
     pip install crypto-history
 
-See :file:`examples/binance_basic.py` for a working example
+See `examples/binance_basic.py <https://github.com/vikramaditya/crypto_history/examples/binance_basic.py>`_ for a working example
 
 .. code:: python
 
     exchange_factory = class_builders.get("market").get("binance")()
-    data_container_factory = class_builders.get("data").get("xarray")()
 
-    coin_history_obtainer = await data_container_factory.create_coin_history_obtainer(exchange_factory,
-                                                                                      interval="1d",
-                                                                                      start_str="1 January 2020",
-                                                                                      end_str="4 June 2020",
-                                                                                      limit=1000
-                                                                                      )
-    data_operations = await data_container_factory.create_data_container_operations(coin_history_obtainer)
-    data_container = await data_operations.get_filled_container()
-    pprint(data_container)
+    desired_fields = ["open_ts", "open"]
+
+    binance_homogenizer = exchange_factory.create_data_homogenizer()
+    base_assets = await binance_homogenizer.get_all_base_assets()
+    print(f"All the base assets available on the Binance exchange are {base_assets}")
+
+    time_range = {("25 Jan 2020", "27 May 2020"): "1d",
+                  ("26 Aug 2020", "now"):         "1h"}
+    time_aggregated_data_container = data_container_intra.TimeAggregatedDataContainer(
+        exchange_factory,
+        base_assets=["NANO", "IOST", "XRP"],
+        reference_assets=["BTC"],
+        ohlcv_fields=desired_fields,
+        time_range_dict=time_range
+    )
+    xdataarray_of_coins = await time_aggregated_data_container.get_time_aggregated_data_container()
+    pprint(xdataarray_of_coins)
 
 
 For more `check out the documentation <https://crypto-history.readthedocs.io/en/latest/>`_.

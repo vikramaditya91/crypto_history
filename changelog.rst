@@ -1,9 +1,15 @@
 Changelog
 =========
 
+1.2b0 (2020-Aug-30)
+------------------
+ * timestamp chunks are generated based on the max-limit provided by the exchange
+ * time histories are concatenated in a single dataarray
+
 1.1a3 (2020-Aug-28)
 ------------------
  * xr.DataArray obtained indexed by the timestamp of user's choice
+ * timestamp chunks are generated based on the max-limit provided by the exchange
 
 1.1a2 (2020-Aug-25)
 ------------------

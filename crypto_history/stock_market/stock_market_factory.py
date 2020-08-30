@@ -1,20 +1,23 @@
 from __future__ import annotations
 import logging
 import asyncio
+import math
+import re
+from dateutil import parser
+import datetime
 from abc import ABC, abstractmethod
-from datetime import datetime
-from typing import Union, Optional, List, Dict, Generator
+from typing import Union, List, Dict, Generator
 from functools import lru_cache
 from collections import namedtuple
 from binance import enums, client
 from dataclasses import make_dataclass
-from .tickers import BinanceTickerPool, TickerPool
-from .request import (
+from crypto_history.stock_market.tickers import BinanceTickerPool, TickerPool
+from crypto_history.stock_market.request import (
     AbstractMarketRequester,
     BinanceRequester,
     SomeOtherExchangeRequester,
 )
-from ..utilities.general_utilities import (
+from crypto_history.utilities.general_utilities import (
     AbstractFactory,
     register_factory,
     get_dataclass_from_dict,
@@ -63,6 +66,11 @@ class StockMarketFactory(AbstractFactory):
     def create_ohlcv_field_types() -> AbstractOHLCVFieldTypes:
         pass
 
+    @staticmethod
+    @abstractmethod
+    def create_time_interval_chunks() -> AbstractTimeIntervalChunks:
+        pass
+
 
 @register_factory("market")
 class ConcreteBinanceFactory(StockMarketFactory):
@@ -104,7 +112,25 @@ class ConcreteBinanceFactory(StockMarketFactory):
 
     @staticmethod
     def create_ohlcv_field_types() -> BinanceOHLCVFieldTypes:
+        """
+        Creates the instance of the Binance OHLCV Fields Types
+
+        Returns:
+            BinanceOHLCVFieldTypes: Instance of BinanceOHLCVFieldTypes
+
+        """
         return BinanceOHLCVFieldTypes()
+
+    @staticmethod
+    def create_time_interval_chunks() -> BinanceTimeIntervalChunks:
+        """
+        Creates the instance of the Binance time interval chunks
+
+        Returns:
+            BinanceTimeIntervalChunks: Instance of BinanceTimeIntervalChunks
+
+        """
+        return BinanceTimeIntervalChunks()
 
 
 @register_factory("market")
@@ -128,7 +154,11 @@ class ConcreteSomeOtherExchangeFactory(StockMarketFactory):
         raise NotImplementedError
 
     @staticmethod
-    def create_ohlcv_field_types() -> AbstractOHLCVFieldTypes:
+    def create_ohlcv_field_types() -> SomeOtherOHLCVFieldTypes:
+        raise NotImplementedError
+
+    @staticmethod
+    def create_time_interval_chunks() -> SomeOtherTimeIntervalChunks:
         raise NotImplementedError
 
 
@@ -216,9 +246,8 @@ class BinanceMarketOperations(AbstractMarketOperations):
         self,
         ticker: Union[str],
         interval: str,
-        start_str: Union[str, datetime],
-        end_str: Optional[Union[str, datetime]] = None,
-        limit: Optional[int] = 500,
+        start_time: int,
+        end_time: int,
     ) -> List:
         """
         Gets the kline history of the ticker from binance exchange
@@ -227,10 +256,8 @@ class BinanceMarketOperations(AbstractMarketOperations):
             ticker (str): ticker whose history has to be pulled
             interval(str): interval of the history (eg. 1d, 3m, etc).\
             See :meth:`binance.enums` in :py:mod:`python-binance`
-            start_str(str|datetime): Start date string in UTC format
-            end_str(str|datetime): End date string in UTC format
-            limit(int): list of klines
-
+            start_time(int): Start date string in exchange-format
+            end_time(int): End date string in exchange-format
 
         Returns:
              list: List of snapshots of history.
@@ -238,23 +265,13 @@ class BinanceMarketOperations(AbstractMarketOperations):
              See details in :class:`.BinanceHomogenizer.OHLCVFields`
 
         """
-        # TODO This should probably be moved to the MarketHomogenizer
-        if isinstance(start_str, datetime):
-            start_str = str(start_str)
-        end_str = end_str or datetime.now()
-        if isinstance(end_str, datetime):
-            end_str = str(end_str)
         binance_interval = self._match_binance_enum(interval)
-        if limit > 1000:
-            # TODO Calculate correctly
-            logger.warning("Limit exceeded. History is going to be truncated")
         return await self.market_requester.request(
             "get_historical_klines",
             ticker,
             binance_interval,
-            start_str,
-            end_str,
-            limit,
+            start_time,
+            end_time,
         )
 
     async def get_all_raw_tickers(self):
@@ -593,3 +610,252 @@ class BinanceOHLCVFieldTypes(AbstractOHLCVFieldTypes):
         taker_buy_base_asset_value: float
         take_buy_quote_asset_value: float
         ignored: int
+
+
+class SomeOtherOHLCVFieldTypes(AbstractOHLCVFieldTypes):
+    pass
+
+
+class AbstractTimeIntervalChunks(ABC):
+    """Abstract class to handle the chunking of dates as the \
+    exchanges have limits on the length of the interval of history"""
+
+    limit = math.inf
+    url = ""
+
+    string_match_timedelta_dict = {
+        "m": datetime.timedelta(minutes=1),
+        "h": datetime.timedelta(hours=1),
+        "d": datetime.timedelta(days=1),
+        "w": datetime.timedelta(weeks=1),
+        # 31 days chosen to not have insufficient lengths
+        "M": datetime.timedelta(days=31),
+    }
+
+    def get_time_range_for_historical_calls(
+        self, raw_time_range_dict: Dict
+    ) -> List[tuple]:
+        """
+        Obtains the time ranges for making the historical calls.
+
+        Args:
+            raw_time_range_dict: Dictionary of the
+            (start:str, end:str): (type_of_interval: str)
+
+        Returns:
+            List of the tuples of the exchange-specific format.
+            ((start_time, end_time), type_of_interval)
+
+        """
+        final_time_range = []
+        for (
+            (start_time, end_time),
+            type_of_interval,
+        ) in raw_time_range_dict.items():
+            sanitized_start = self.sanitize_item_to_datetime_object(start_time)
+            sanitized_end = self.sanitize_item_to_datetime_object(end_time)
+            sanitized_kline_width = self.map_string_to_timedelta(
+                type_of_interval
+            )
+            sub_chunks = self._get_chunks_from_start_end_complete(
+                sanitized_start, sanitized_end, sanitized_kline_width
+            )
+            sanitized_sub_chunks = self.get_exchange_specific_sub_chunks(
+                sub_chunks
+            )
+            [
+                final_time_range.append((chunk, type_of_interval))
+                for chunk in sanitized_sub_chunks
+            ]
+        logger.info(f"The time histories have been chunked into"
+                    f" {final_time_range}")
+        return final_time_range
+
+    def get_exchange_specific_sub_chunks(
+        self, sub_chunks: List[tuple]
+    ) -> List[tuple]:
+        """
+        Gets the exchange specific sub-chunk from default sub-chunks
+        Args:
+            sub_chunks (list): default sub-chunks to be converted \
+            to exchange specific
+
+        Returns:
+            List of exchange-specific formatted sub-chunks
+
+        """
+        list_of_sub_chunks = []
+        for sub_chunk in sub_chunks:
+            list_of_sub_chunks.append(
+                tuple(
+                    map(self.sanitize_datetime_to_exchange_specific, sub_chunk)
+                )
+            )
+        return list_of_sub_chunks
+
+    @staticmethod
+    def sanitize_item_to_datetime_object(
+        item_to_parse: str,
+    ) -> datetime.datetime:
+        """
+        Converts/sanitizes the string to the datetime.datetime object
+        Notes:
+            Timezone is not handled. The local timezone is considered \
+            by dateutil's parser
+        Args:
+            item_to_parse (str): the item that has to be converted
+
+        Returns:
+            datetime.datetime object from the string
+
+        """
+        if item_to_parse == "now":
+            return datetime.datetime.now()
+        return parser.parse(item_to_parse)
+
+    @staticmethod
+    def _calculate_klines_in_interval(
+        start_datetime: datetime.datetime,
+        end_datetime: datetime.datetime,
+        timedelta_kline: datetime.timedelta,
+    ) -> int:
+        """
+        Calculates the expected klines from the start and end dates
+        Args:
+            start_datetime (datetime.datetime): start time
+            end_datetime (datetime.datetime): end time
+            timedelta_kline (datetime.timedelta): the interval of each kline
+
+        Returns:
+            The number of klines expected between these times
+
+        """
+        length_of_interval = end_datetime - start_datetime
+        return math.ceil(length_of_interval / timedelta_kline)
+
+    @staticmethod
+    def _get_chunks_from_number_of_intervals(
+        start_datetime: datetime.datetime,
+        end_datetime: datetime.datetime,
+        number_of_intervals: int,
+    ) -> List[tuple]:
+        """
+        Gets the chunks by splitting the times into the number of intervals
+        Args:
+            start_datetime (datetime.datetime): start of the overall time
+            end_datetime (datetime.datetime): end of the overall time
+            number_of_intervals (int): the number of intervals between the \
+             times
+
+        Returns:
+            List[tuple] the tuple is set as (start_ts_of_sub_chunk, \
+            end_ts_of_sub_chunk)
+
+        """
+        chunks_of_intervals = []
+        average_timedelta = (
+            end_datetime - start_datetime
+        ) / number_of_intervals
+        for i in range(number_of_intervals):
+            chunks_of_intervals.append(
+                (
+                    start_datetime + average_timedelta * i,
+                    start_datetime + average_timedelta * (i + 1),
+                )
+            )
+        # There could possibly be a difference in the end-time of the
+        # last time item due to round-off errors
+        return chunks_of_intervals
+
+    def _get_chunks_from_start_end_complete(
+        self,
+        start_datetime: datetime.datetime,
+        end_datetime: datetime.datetime,
+        interval_kline: datetime.timedelta,
+    ) -> List[tuple]:
+        """
+        Gets the chunks based on the intervals of the timedelta
+        Args:
+            start_datetime (datetime.datetime): start of the overall time
+            end_datetime (datetime.datetime): end of the overall time
+            interval_kline (datetime.timedelta): the timedelta of each kline
+
+        Returns:
+            List[tuple] the tuple is set as (start_ts_of_sub_chunk, \
+            end_ts_of_sub_chunk)
+
+        """
+        number_of_klines = self._calculate_klines_in_interval(
+            start_datetime, end_datetime, interval_kline
+        )
+        number_of_intervals_necessary = math.ceil(
+            number_of_klines / self.limit
+        )
+
+        return self._get_chunks_from_number_of_intervals(
+            start_datetime, end_datetime, number_of_intervals_necessary
+        )
+
+    @staticmethod
+    @abstractmethod
+    def sanitize_datetime_to_exchange_specific(
+        datetime_obj: datetime.datetime,
+    ):
+        """Converts the datetime object to exchange specific format"""
+        pass
+
+    def map_string_to_timedelta(self, time_string: str) -> datetime.timedelta:
+        """
+        Maps the string to timedelta
+        Args:
+            time_string: string which is supposed to represent time
+
+        Returns:
+            datetime.timedelta object of the string of time
+
+        """
+        number_of_items = int(re.search("[0-9]+", time_string).group())
+        string_to_match = re.search("[a-zA-Z]+", time_string).group()
+        try:
+            timedelta_of_string = self.string_match_timedelta_dict[
+                string_to_match
+            ]
+        except KeyError:
+            raise KeyError(
+                f"{string_to_match} could not match with anything "
+                f"in the exchange. \nVisit {self.url}"
+                f" for possible intervals"
+            )
+        return datetime.timedelta(
+            seconds=(timedelta_of_string.total_seconds() * number_of_items)
+        )
+
+
+class BinanceTimeIntervalChunks(AbstractTimeIntervalChunks):
+    """Binance specific information for the interval generation"""
+
+    url = "https://github.com/binance-exchange/binance-\
+    official-api-docs/blob/master/rest-api.md#enum-definitions"
+    limit = 1000
+
+    @staticmethod
+    def sanitize_datetime_to_exchange_specific(
+        datetime_obj: datetime.datetime,
+    ) -> int:
+        """
+        Converts the datetime object to binance specific format for \
+        making the requests
+        Args:
+            datetime_obj: datetime.datetime object which needs to be converted
+
+        Returns:
+            binance specific format
+
+        """
+        return int(datetime_obj.timestamp()) * 1000
+
+
+class SomeOtherTimeIntervalChunks(AbstractTimeIntervalChunks):
+    @staticmethod
+    def sanitize_datetime_to_exchange_specific(datetime_obj):
+        pass
