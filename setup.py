@@ -46,7 +46,7 @@ setup(
     author_email="vikramaditya91@gmail.com",
     python_requires=">=3.8.0",
     classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         "Environment :: Console",
         "Intended Audience :: Developers",
         "Natural Language :: English",

@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.2a0 (2020-Aug-30)
+1.2b0 (2020-Aug-30)
 ------------------
  * timestamp chunks are generated based on the max-limit provided by the exchange
  * time histories are concatenated in a single dataarray
