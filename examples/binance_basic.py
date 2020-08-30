@@ -1,6 +1,6 @@
 import asyncio
 from pprint import pprint
-from crypto_history import class_builders, init_logger, data_container_intra
+from crypto_history import class_builders, init_logger, data_container_access
 import logging
 
 
@@ -16,7 +16,7 @@ async def main():
 
     time_range = {("25 Jan 2020", "27 May 2020"): "1d",
                   ("26 Aug 2020", "now"):         "1h"}
-    time_aggregated_data_container = data_container_intra.TimeAggregatedDataContainer(
+    time_aggregated_data_container = data_container_access.TimeAggregatedDataContainer(
         exchange_factory,
         base_assets=["NANO", "IOST", "XRP"],
         reference_assets=["BTC", "USDT"],

@@ -4,7 +4,7 @@ import xarray as xr
 import numpy as np
 import pandas as pd
 from typing import List, Dict, Union, Tuple
-from crypto_history.stock_market.stock_market_factory import StockMarketFactory
+from ..stock_market.stock_market_factory import StockMarketFactory
 from .data_container_pre import PrimitiveDataArrayOperations
 from ..utilities.exceptions import EmptyDataFrameException
 
@@ -180,7 +180,7 @@ class TimeStampIndexedDataContainer:
             do_approximation (bool): check if the timestamps can be \
             approximated to the reference datarray
             tolerance_ratio (float): the ratio of the maximum tolerance for
-             approximations of timestamps
+            approximations of timestamps
         Returns:
             xr.DataSet data of the coin history
         """
@@ -442,7 +442,7 @@ class TimeAggregatedDataContainer:
         reference_assets: List[str],
         ohlcv_fields: List[str],
         time_range_dict: Dict,
-        reference_ticker: tuple = ("ETH", "BTC"),
+        reference_ticker: Tuple = ("ETH", "BTC"),
         aggregate_coordinate_by: str = "open_ts",
     ):
         self.exchange_factory = exchange_factory
@@ -478,7 +478,7 @@ class TimeAggregatedDataContainer:
         coordinate="timestamp",
     ) -> xr.DataArray:
         """
-        Concatenates two histories in the coordinate desired
+        Concatenates two histories in the desired coordinate/dimension
         Args:
             dataarray List[xr.DataArray]: List/Tuple of xr.DataArrays \
                 that need to be concatednated
@@ -494,7 +494,7 @@ class TimeAggregatedDataContainer:
 
     async def get_chunk_history(
         self,
-        interval: str,
+        kline_width: str,
         start_time: Union[str, datetime.datetime, int],
         end_time: Union[str, datetime.datetime, int],
     ) -> xr.DataArray:
@@ -502,7 +502,7 @@ class TimeAggregatedDataContainer:
         Gets the history of the particular chunk whose start and end
         times are well defined
         Args:
-            interval (str): The exchanges interval
+            kline_width (str): The exchanges interval
             start_time (datetime/str/int): the start-time of the \
                         chunk of history
             end_time: (datetime/str/int): the end-time of the \
@@ -513,13 +513,13 @@ class TimeAggregatedDataContainer:
 
         """
         time_stamp_indexed_container = TimeStampIndexedDataContainer(
-            self.exchange_factory,
-            self.base_assets,
-            self.reference_assets,
-            self.reference_ticker,
-            self.aggregate_coordinate_by,
-            self.ohlcv_fields,
-            interval,
+            exchange_factory=self.exchange_factory,
+            base_assets=self.base_assets,
+            reference_assets=self.reference_assets,
+            reference_ticker=self.reference_ticker,
+            aggregate_coordinate_by=self.aggregate_coordinate_by,
+            ohlcv_fields=self.ohlcv_fields,
+            weight=kline_width,
             start_time=start_time,
             end_time=end_time,
         )
@@ -534,6 +534,7 @@ class TimeAggregatedDataContainer:
         """
         Gets time aggregated data container by splitting
          the containers as required
+
         Args:
             sort (bool): to check if the data is to be sorted \
             in an increasing order
@@ -558,7 +559,8 @@ class TimeAggregatedDataContainer:
 
     @staticmethod
     def get_sorted_dataarray(
-        dataarray: xr.DataArray, coordinate: str
+        dataarray: xr.DataArray,
+        coordinate: str
     ) -> xr.DataArray:
         """
         Sorts the given dataarray in the given coordinate direction
@@ -571,4 +573,4 @@ class TimeAggregatedDataContainer:
             xr.DataArray The sorted dataarray
 
         """
-        return dataarray.sortby(coordinate, ascending=False)
+        return dataarray.sortby(coordinate, ascending=True)

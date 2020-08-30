@@ -12,7 +12,7 @@ Welcome to crypto_history's documentation!
 
    source_code/market/stock_market_factory
    source_code/data_container/data_container_pre
-   source_code/data_container/data_container_intra
+   source_code/data_container/data_container_access
    source_code/utilities
 
 Indices and tables

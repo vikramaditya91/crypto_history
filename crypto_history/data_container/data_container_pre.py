@@ -32,9 +32,9 @@ class PrimitiveCoinHistoryObtainer:
              the exchange_factory which is responsible for \
             setting the market_homogenizer
             interval(str): Length of the history of the klines per item
-            start_time(str|datetime/int): duration from which history \
+            start_time(str/datetime/int): duration from which history \
                is necessary
-            end_time(str|datetime/int): duration upto which history \
+            end_time(str/datetime/int): duration up to which history \
                is necessary
         """
         self.market_harmonizer = exchange_factory.create_data_homogenizer()

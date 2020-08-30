@@ -247,7 +247,7 @@ class BinanceMarketOperations(AbstractMarketOperations):
         ticker: Union[str],
         interval: str,
         start_time: int,
-        end_time: int = None,
+        end_time: int,
     ) -> List:
         """
         Gets the kline history of the ticker from binance exchange
@@ -654,11 +654,11 @@ class AbstractTimeIntervalChunks(ABC):
         ) in raw_time_range_dict.items():
             sanitized_start = self.sanitize_item_to_datetime_object(start_time)
             sanitized_end = self.sanitize_item_to_datetime_object(end_time)
-            sanitized_kline_interval = self.map_string_to_timedelta(
+            sanitized_kline_width = self.map_string_to_timedelta(
                 type_of_interval
             )
             sub_chunks = self._get_chunks_from_start_end_complete(
-                sanitized_start, sanitized_end, sanitized_kline_interval
+                sanitized_start, sanitized_end, sanitized_kline_width
             )
             sanitized_sub_chunks = self.get_exchange_specific_sub_chunks(
                 sub_chunks
@@ -699,6 +699,9 @@ class AbstractTimeIntervalChunks(ABC):
     ) -> datetime.datetime:
         """
         Converts/sanitizes the string to the datetime.datetime object
+        Notes:
+            Timezone is not handled. The local timezone is considered \
+            by dateutil's parser
         Args:
             item_to_parse (str): the item that has to be converted
 
