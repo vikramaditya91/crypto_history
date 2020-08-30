@@ -7,6 +7,7 @@ from dateutil import parser
 
 @pytest.fixture
 def binance_time_intervals():
+    """Instance of the binance create time interval chunks instance"""
     exchange_factory = class_builders.get("market").get("binance")()
     binance_time_intervals = exchange_factory.create_time_interval_chunks()
     return binance_time_intervals
@@ -52,6 +53,7 @@ def binance_time_intervals():
 def test_match_binance_enum(
     original_chunk_dict, expected_chunk, exception, binance_time_intervals
 ):
+    """Tests if the time-history chunks are generated as expected"""
     tzinfos = {"IST": 19800}
 
     def sanitize_mock_with_timezone(time_string_to_parse):
