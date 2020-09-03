@@ -1,12 +1,14 @@
 from __future__ import annotations
 import logging
+import contextlib
 import xarray as xr
 from pandas import DataFrame
 from dataclasses import dataclass, fields
 from typing import Union, List, Dict
 from datetime import datetime
 from crypto_history.stock_market.tickers import TickerPool
-from crypto_history.stock_market.stock_market_factory import StockMarketFactory
+from crypto_history.stock_market.stock_market_factory import \
+    StockMarketFactory, AbstractMarketHomogenizer
 from .utilities import DataFrameOperations
 from ..utilities import general_utilities, exceptions
 
@@ -19,7 +21,7 @@ class PrimitiveCoinHistoryObtainer:
 
     def __init__(
         self,
-        exchange_factory: StockMarketFactory,
+        market_harmonizer: AbstractMarketHomogenizer,
         interval: str,
         start_time: Union[str, datetime, int],
         end_time: Union[str, datetime, int],
@@ -37,13 +39,29 @@ class PrimitiveCoinHistoryObtainer:
             end_time(str/datetime/int): duration up to which history \
                is necessary
         """
-        self.market_harmonizer = exchange_factory.create_data_homogenizer()
+        self.market_harmonizer = market_harmonizer
         self.data_container = None
         self.interval = interval
         self.start_time = start_time
         self.end_time = end_time
         self.ticker_pool = None
         self.example_raw_history = None
+
+    @classmethod
+    @contextlib.asynccontextmanager
+    async def create_primitive_coin_history_obtainer(cls,
+                                                     exchange_factory: StockMarketFactory,
+                                                     interval: str,
+                                                     start_time: Union[str, datetime, int],
+                                                     end_time: Union[str, datetime, int],
+                                                     ):
+        async with exchange_factory.create_data_homogenizer() as market_harmonizer:
+            yield cls(
+                market_harmonizer,
+                interval,
+                start_time,
+                end_time,
+            )
 
     async def initialize_example(self) -> List:
         # FixMe The TimeIndexedDataContainer something similar.\
@@ -160,6 +178,11 @@ class PrimitiveDimensionsManager:
         """Initializes the dimensions manager with the coin_history_obtainer"""
         self.coin_history_obtainer = history_obtainer
 
+    @classmethod
+    def create_primitive_dimensions_manager(cls,
+                                            history_obtainer: PrimitiveCoinHistoryObtainer):
+        return PrimitiveDimensionsManager(history_obtainer)
+
     async def get_depth_of_indices(self) -> List:
         """
         Obtains the depth of the indices to identify how many time-stamp values
@@ -225,13 +248,12 @@ class PrimitiveDataArrayOperations:
 
     def __init__(
         self,
-        exchange_factory: StockMarketFactory,
+        history_obtainer: PrimitiveCoinHistoryObtainer,
+        dimensions_manager: PrimitiveDimensionsManager,
         base_assets: List,
         reference_assets: List,
         ohlcv_fields: List,
         interval: str,
-        start_time: Union[str, datetime, int],
-        end_time: Union[str, datetime, int],
     ):
         """
         Initializes the DataContainerOperations which is the user \
@@ -248,17 +270,43 @@ class PrimitiveDataArrayOperations:
             end_time (str/datetime/int): date up to which data collection \
                 should be made
         """
-        self.history_obtainer = PrimitiveCoinHistoryObtainer(
-            exchange_factory, interval, start_time, end_time
-        )
-        self.dimension_manager = PrimitiveDimensionsManager(
-            self.history_obtainer
-        )
+        self.history_obtainer = history_obtainer
+        self.dimension_manager = dimensions_manager
         self.dataframe_operations = DataFrameOperations()
         self.base_assets = base_assets
         self.reference_assets = reference_assets
         self.ohlcv_fields = ohlcv_fields
         self.interval = interval
+
+    @classmethod
+    @contextlib.asynccontextmanager
+    async def create_primitive_data_array_operations(
+            cls,
+            exchange_factory: StockMarketFactory,
+            base_assets: List,
+            reference_assets: List,
+            ohlcv_fields: List,
+            interval: str,
+            start_time: Union[str, datetime, int],
+            end_time: Union[str, datetime, int],
+    ):
+        async with PrimitiveCoinHistoryObtainer.create_primitive_coin_history_obtainer(
+                exchange_factory,
+                interval,
+                start_time,
+                end_time
+        ) as history_obtainer:
+            dimensions_manager = PrimitiveDimensionsManager.create_primitive_dimensions_manager(
+                    history_obtainer
+            )
+            yield cls(
+                history_obtainer,
+                dimensions_manager,
+                base_assets,
+                reference_assets,
+                ohlcv_fields,
+                interval,
+            )
 
     async def get_populated_primitive_container(self) -> xr.DataArray:
         """
