@@ -19,16 +19,18 @@ class TypeConvertedData:
         float: np.float64,
     }
 
-    def __init__(self, exchange_factory: StockMarketFactory):
+    def __init__(self,
+                 exchange_factory: StockMarketFactory):
         """Initializes the type conversion of the data"""
         self.ohlcv_field_types = exchange_factory.create_ohlcv_field_types()
 
     def get_ohlcv_field_type_dict(self) -> Dict:
         """
-        Gets the field types of the OHLCV Fields converted to
-         the numpy/pandas format. This is done to be able to
-         handle nan values in Int/String types
-        Returns (dict): Dictionary of the map from the
+        Gets the field types of the OHLCV Fields converted to \
+        the numpy/pandas format. This is done to be able to \
+        handle nan values in Int/String types
+
+        Returns (dict): Dictionary of the map from the \
         ohlcv-field to the pd/np type
 
         """
@@ -43,11 +45,12 @@ class TypeConvertedData:
 
     def set_type_on_dataset(self, dataset: xr.Dataset) -> xr.Dataset:
         """
-        Sets the type on the xr.DataSet according to the
-         ohlcv field type
+        Sets the type on the xr.DataSet according to the \
+        ohlcv field type
+
         Args:
-            dataset(xr.DataSet): The dataset on which the type
-            has to be set
+            dataset(xr.DataSet): The dataset on which the type \
+                has to be set
 
         Returns:
             xr.DataSet which has the type set on it
@@ -60,11 +63,11 @@ class TypeConvertedData:
 
     def set_type_on_dataarray(self, dataarray: xr.DataArray) -> xr.DataArray:
         """
-        Sets the type on the xr.DataArray according to the
-         ohlcv field type
+        Sets the type on the xr.DataArray according to the \
+            ohlcv field type
         Args:
-            dataarray(xr.DataArray): The DataArray on which the type
-            has to be set
+            dataarray(xr.DataArray): The DataArray on which the type \
+                has to be set
 
         Returns:
             xr.DataArray which has the type set on it
@@ -92,8 +95,8 @@ class HandleIncompleteData:
         self, data_item: Union[xr.DataArray, xr.Dataset]
     ) -> Union[xr.DataArray, xr.Dataset]:
         """
-        Drops the coins from the base/reference asset if all
-         its corresponding values are nan
+        Drops the coins from the base/reference asset if all \
+            its corresponding values are nan
         Args:
             data_item(xr.DataArray/xr.DataSet): which contains \
                 information of the coin histories
@@ -102,7 +105,8 @@ class HandleIncompleteData:
             xr.DataArray/xr.DataSet where the coins have been dropped
 
         """
-        logger.debug("Dataarray prior to dropping entire data TODO")
+        logger.debug(f"{type(data_item)} prior to dropping entire "
+                     f"data has coordinates: {data_item.coords}")
         for coordinate in self.coordinates_to_drop:
             data_item = data_item.dropna(coordinate, how="all")
         return data_item

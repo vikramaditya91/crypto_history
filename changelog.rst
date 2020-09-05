@@ -1,6 +1,10 @@
 Changelog
 =========
 
+1.2b1 (2020-Sep-06)
+------------------
+ * incomplete histories are nullified and their types are set according to the ohlcv-field
+
 1.2b0 (2020-Aug-30)
 ------------------
  * timestamp chunks are generated based on the max-limit provided by the exchange

@@ -40,6 +40,10 @@ Documentation
 Features
 --------
 
+- Cleans the data ticker-wise if incomplete
+- Sets the correct type on the data obtained
+- Is able to join data from various chunks of time in a single DataArray
+- Candles of varying intervals can be obtained in a single DataArray
 - Fetches information about all tickers available on Binance asynchronously
 - Delays requests if it is close to the limit prescribed by Binance
 - Retries when the requests have exceeded the performance limit of the machine
@@ -54,7 +58,7 @@ Quick Start
 
     pip install crypto-history
 
-See `examples/binance_basic.py <https://github.com/vikramaditya/crypto_history/examples/binance_basic.py>`_ for a working example
+See a basic example at :`examples/binance_basic.py <https://github.com/vikramaditya91/crypto_history/tree/master/examples/binance_basic.py>`_
 
 .. code:: python
 
