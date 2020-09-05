@@ -10,7 +10,7 @@ from tests.unit.data_container.sample_data import (  # NOQA
 
 
 @pytest.fixture
-def sample_time_stamp_indexed_data_container():
+def sample_type_converter():
     """Instance of TimeStampIndexedDataContainer class"""
     binance_factory = class_builders.get("market").get("binance")()
     return data_container_post.TypeConvertedData(binance_factory)
@@ -18,12 +18,12 @@ def sample_time_stamp_indexed_data_container():
 
 @pytest.mark.asyncio
 async def test_setting_type_on_dataarray(
-    sample_time_stamp_indexed_data_container,
+    sample_type_converter,
     sample_full_xr_dataarray,  # NOQA
         dict_type_of_ohlcv_field,  # NOQA
 ):
     """Test to confirm the types are set correctly on the dataarray"""
-    type_set_da = sample_time_stamp_indexed_data_container.\
+    type_set_da = sample_type_converter.\
         set_type_on_dataarray(
             sample_full_xr_dataarray
         )
@@ -39,12 +39,12 @@ async def test_setting_type_on_dataarray(
 
 @pytest.mark.asyncio
 async def test_setting_type_on_dataset(
-    sample_time_stamp_indexed_data_container,
+    sample_type_converter,
     sample_full_xr_dataset,  # NOQA
         dict_type_of_ohlcv_field,  # NOQA
 ):
     """Test to confirm the types are set correctly on the dataset"""
-    type_set_ds = sample_time_stamp_indexed_data_container.set_type_on_dataset(
+    type_set_ds = sample_type_converter.set_type_on_dataset(
         sample_full_xr_dataset
     )
     for ohlcv_field in type_set_ds:

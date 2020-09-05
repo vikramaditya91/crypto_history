@@ -20,7 +20,7 @@ def sample_full_xr_dataarray():
                 [
                     "0.88150000",
                     "0.93990000",
-                    "0.89100000",
+                    np.nan,
                     0.91140000,
                     "0.90170000",
                 ],
@@ -152,7 +152,7 @@ def sample_approximated_time_indexed_array():
             [
                 ["0.88150000", 1590451199999, "1d"],
                 ["0.93990000", 1590537599999, "1d"],
-                ["0.89100000", 1590623999999, "1d"],
+                [np.nan, np.nan, np.nan],
                 [0.91140000, 1590710399999, "1d"],
                 ["0.90170000", 1590796799999, 1],
             ],
@@ -192,7 +192,7 @@ def sample_exact_time_indexed_array():
                 ["0.88150000", 1590451199999, "1d"],
                 [np.nan, np.nan, np.nan],
                 ["0.93990000", 1590537599999, "1d"],
-                ["0.89100000", 1590623999999, "1d"],
+                [np.nan, np.nan, np.nan],
                 [0.91140000, 1590710399999, "1d"],
                 ["0.90170000", 1590796799999, 1],
             ],
@@ -235,3 +235,8 @@ def dict_type_of_ohlcv_field():
         "close_ts": np.int64,
         "weight": np.str_,
     }
+
+
+@pytest.fixture
+def xarray_data(request):
+    return request.getfuncargvalue(request.param)
