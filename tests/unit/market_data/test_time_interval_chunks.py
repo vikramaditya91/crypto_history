@@ -9,8 +9,7 @@ from dateutil import parser
 def binance_time_intervals():
     """Instance of the binance create time interval chunks instance"""
     exchange_factory = class_builders.get("market").get("binance")()
-    binance_time_intervals = exchange_factory.create_time_interval_chunks()
-    return binance_time_intervals
+    return exchange_factory.create_time_interval_chunks()
 
 
 @pytest.mark.parametrize(

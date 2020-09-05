@@ -4,10 +4,10 @@ from binance import client
 
 
 @pytest.fixture
-def binance_market_operator():
+async def binance_market_operator():
     exchange_factory = class_builders.get("market").get("binance")()
-    market_operator = exchange_factory.create_market_operations()
-    return market_operator
+    async with exchange_factory.create_market_operations() as market_operator:
+        yield market_operator
 
 
 @pytest.mark.parametrize(
@@ -21,7 +21,9 @@ def binance_market_operator():
         ("31d", None, AssertionError),
     ],
 )
-def test_match_binance_enum(
+
+@pytest.mark.asyncio
+async def test_match_binance_enum(
     binance_market_operator, string_of_time, binance_enum, exception
 ):
     if exception is None:

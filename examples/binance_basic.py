@@ -7,20 +7,19 @@ import xarray as xr
 
 
 async def main():
-    init_logger(level=logging.INFO)
+    init_logger(level=logging.DEBUG)
 
     exchange_factory = class_builders.get("market").get("binance")()
 
-    desired_fields = ["open_ts", "open"]
+    desired_fields = ["open_ts", "open", "close_ts"]
     async with exchange_factory.create_data_homogenizer() as binance_homogenizer:
-        await binance_homogenizer.get_all_base_assets()
         base_assets = await binance_homogenizer.get_all_base_assets()
         print(f"All the base assets available on the Binance exchange are {base_assets}")
         time_range = {("25 Jan 2018", "27 Feb 2018"): "1d",
                       ("26 Aug 2020", "now"):         "1w"}
         time_aggregated_data_container = data_container_access.TimeAggregatedDataContainer(
             exchange_factory,
-            base_assets=["NANO", "IOST", "XRP"],
+            base_assets=["NANO"],
             reference_assets=["BTC", "USDT"],
             ohlcv_fields=desired_fields,
             time_range_dict=time_range
@@ -33,10 +32,23 @@ async def main():
 
         type_converter = data_container_post.TypeConvertedData(exchange_factory)
         type_converted_dataset = type_converter.set_type_on_dataset(xdataset)
-        pprint(type_converted_dataset)
 
         type_converted_dataarray = type_converter.set_type_on_dataarray(xdataarray_of_coins)
-        pprint(type_converted_dataarray)
+
+        incomplete_data_handle = data_container_post.HandleIncompleteData()
+        entire_na_removed_dataarray = incomplete_data_handle.\
+            drop_xarray_coins_with_entire_na(type_converted_dataarray)
+
+        entire_na_removed_dataset = incomplete_data_handle.\
+            drop_xarray_coins_with_entire_na(type_converted_dataset)
+
+        strict_na_dropped_dataarray = incomplete_data_handle.\
+            nullify_incomplete_data_from_dataarray(entire_na_removed_dataarray)
+
+        strict_na_dropped_dataset = incomplete_data_handle.\
+            nullify_incomplete_data_from_dataset(entire_na_removed_dataset)
+
+        pprint(strict_na_dropped_dataset)
 
 
 

@@ -9,11 +9,12 @@ from ...helpers_test_utilities import async_return
 
 
 @pytest.fixture
-def sample_time_stamp_indexed_data_container():
+async def sample_time_stamp_indexed_data_container():
     """Instance of TimeStampIndexedDataContainer class"""
     binance_factory = class_builders.get("market").get("binance")()
-    timestamp_indexed_container = \
-        data_container_access.TimeStampIndexedDataContainer(
+    async with data_container_access.\
+            TimeStampIndexedDataContainer.\
+            create_time_stamp_indexed_data_container(
             exchange_factory=binance_factory,
             base_assets=["NANO", "XMR"],
             reference_assets=["USDT", "XRP"],
@@ -23,8 +24,8 @@ def sample_time_stamp_indexed_data_container():
             weight="1d",
             start_time="25 May 2020",
             end_time="29 May 2020",
-        )
-    return timestamp_indexed_container
+            ) as timestamp_indexed_container:
+        yield timestamp_indexed_container
 
 
 @pytest.fixture

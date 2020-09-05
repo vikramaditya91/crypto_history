@@ -7,8 +7,10 @@ from dataclasses import dataclass, fields
 from typing import Union, List, Dict
 from datetime import datetime
 from crypto_history.stock_market.tickers import TickerPool
-from crypto_history.stock_market.stock_market_factory import \
-    StockMarketFactory, AbstractMarketHomogenizer
+from crypto_history.stock_market.stock_market_factory import (
+    StockMarketFactory,
+    AbstractMarketHomogenizer,
+)
 from .utilities import DataFrameOperations
 from ..utilities import general_utilities, exceptions
 
@@ -49,18 +51,17 @@ class PrimitiveCoinHistoryObtainer:
 
     @classmethod
     @contextlib.asynccontextmanager
-    async def create_primitive_coin_history_obtainer(cls,
-                                                     exchange_factory: StockMarketFactory,
-                                                     interval: str,
-                                                     start_time: Union[str, datetime, int],
-                                                     end_time: Union[str, datetime, int],
-                                                     ):
-        async with exchange_factory.create_data_homogenizer() as market_harmonizer:
+    async def create_primitive_coin_history_obtainer(
+        cls,
+        exchange_factory: StockMarketFactory,
+        interval: str,
+        start_time: Union[str, datetime, int],
+        end_time: Union[str, datetime, int],
+    ):
+        async with exchange_factory.create_data_homogenizer() \
+                as market_harmonizer:
             yield cls(
-                market_harmonizer,
-                interval,
-                start_time,
-                end_time,
+                market_harmonizer, interval, start_time, end_time,
             )
 
     async def initialize_example(self) -> List:
@@ -179,8 +180,9 @@ class PrimitiveDimensionsManager:
         self.coin_history_obtainer = history_obtainer
 
     @classmethod
-    def create_primitive_dimensions_manager(cls,
-                                            history_obtainer: PrimitiveCoinHistoryObtainer):
+    def create_primitive_dimensions_manager(
+        cls, history_obtainer: PrimitiveCoinHistoryObtainer
+    ):
         return PrimitiveDimensionsManager(history_obtainer)
 
     async def get_depth_of_indices(self) -> List:
@@ -281,24 +283,23 @@ class PrimitiveDataArrayOperations:
     @classmethod
     @contextlib.asynccontextmanager
     async def create_primitive_data_array_operations(
-            cls,
-            exchange_factory: StockMarketFactory,
-            base_assets: List,
-            reference_assets: List,
-            ohlcv_fields: List,
-            interval: str,
-            start_time: Union[str, datetime, int],
-            end_time: Union[str, datetime, int],
+        cls,
+        exchange_factory: StockMarketFactory,
+        base_assets: List,
+        reference_assets: List,
+        ohlcv_fields: List,
+        interval: str,
+        start_time: Union[str, datetime, int],
+        end_time: Union[str, datetime, int],
     ):
-        async with PrimitiveCoinHistoryObtainer.create_primitive_coin_history_obtainer(
-                exchange_factory,
-                interval,
-                start_time,
-                end_time
-        ) as history_obtainer:
-            dimensions_manager = PrimitiveDimensionsManager.create_primitive_dimensions_manager(
+        async with PrimitiveCoinHistoryObtainer.\
+                create_primitive_coin_history_obtainer(
+                exchange_factory, interval, start_time, end_time
+                ) as history_obtainer:
+            dimensions_manager = PrimitiveDimensionsManager.\
+                create_primitive_dimensions_manager(
                     history_obtainer
-            )
+                )
             yield cls(
                 history_obtainer,
                 dimensions_manager,
