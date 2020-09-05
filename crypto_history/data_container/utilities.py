@@ -7,6 +7,7 @@ from crypto_history.utilities import exceptions
 
 class DataFrameOperations:
     """Operations purely dedicated to dataframe"""
+
     @staticmethod
     def calculate_rows_to_add(
         df: DataFrame, list_of_standard_history: List
