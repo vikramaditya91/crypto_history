@@ -11,23 +11,30 @@ async def main():
     exchange_factory = class_builders.get("market").get("binance")()
 
     desired_fields = ["open_ts", "open", "close_ts"]
-    async with exchange_factory.create_data_homogenizer() as binance_homogenizer:
+    async with exchange_factory.create_data_homogenizer() \
+            as binance_homogenizer:
         base_assets = await binance_homogenizer.get_all_base_assets()
-        print(f"All the base assets available on the Binance exchange are {base_assets}")
-        time_range = {("25 Jan 2018", "27 Feb 2018"): "1d",
-                      ("26 Aug 2020", "now"):         "1w"}
-        time_aggregated_data_container = data_container_access.TimeAggregatedDataContainer(
+        print(f"All the base assets available on the "
+              f"Binance exchange are {base_assets}")
+
+        reference_assets = await binance_homogenizer.get_all_refernce_assets()
+        print(f"All the reference assets available on the"
+              f" Binance exchange are {reference_assets}")
+
+    time_range = {("25 Jan 2018", "27 Feb 2018"): "1d"}
+    time_aggregated_data_container = data_container_access.\
+        TimeAggregatedDataContainer(
             exchange_factory,
             base_assets=["NANO"],
             reference_assets=["BTC", "USDT"],
             ohlcv_fields=desired_fields,
             time_range_dict=time_range
         )
-        xdataarray_of_coins = await time_aggregated_data_container.get_time_aggregated_data_container()
-        pprint(xdataarray_of_coins)
+    xdataarray_of_coins = await time_aggregated_data_container.get_time_aggregated_data_container()
+    pprint(xdataarray_of_coins)
 
-        xdataset = xdataarray_of_coins.to_dataset("ohlcv_fields")
-        pprint(xdataset)
+    xdataset = xdataarray_of_coins.to_dataset("ohlcv_fields")
+    pprint(xdataset)
 
 
 if __name__ == "__main__":

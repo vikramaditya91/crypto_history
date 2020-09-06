@@ -81,9 +81,10 @@ class TypeConvertedData:
 
 
 class HandleIncompleteData:
-    """Responsible for handling missing data.
-    If it has to be dropped, etc"""
-
+    """Responsible for handling missing data:\
+    1. If a certain coin has to be dropped if it is null
+    2. If a ticker has to be nulliifed as it has incomplete data
+    """
     def __init__(self, coordinates_to_drop=None):
         """Initializes the incomplete data. The iterations on the
          coordinates are set with coordinates to drop"""
@@ -113,7 +114,8 @@ class HandleIncompleteData:
                      f"data has coordinates: {data_item.coords}")
         return data_item
 
-    def get_all_combinations(self, data_item: Union[xr.DataArray, xr.Dataset]):
+    def get_all_coord_combinations(self,
+                                   data_item: Union[xr.DataArray, xr.Dataset]):
         """
         Gets all the various combinations to iterate
          according to the coordinates to drop
@@ -150,7 +152,7 @@ class HandleIncompleteData:
 
         """
 
-        for combination in self.get_all_combinations(dataarray):
+        for combination in self.get_all_coord_combinations(dataarray):
             if dataarray.loc[combination].isnull().any():
                 dataarray.loc[combination] = np.nan
         return dataarray
@@ -173,7 +175,7 @@ class HandleIncompleteData:
             xr.DataSet whose incomplete items are nullified
 
         """
-        for combination in self.get_all_combinations(dataset):
+        for combination in self.get_all_coord_combinations(dataset):
             if any(list(dataset.loc[combination].isnull().any().values())):
                 for ohlcv_field in list(dataset.keys()):
                     dataset[ohlcv_field].loc[combination] = np.nan

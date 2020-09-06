@@ -50,14 +50,17 @@ class TimeStampIndexedDataContainer:
             exchange_factory (StockMarketFactory): The exchange factory
             base_assets(List): List of base assets
             reference_assets(List): List of reference assets
-            reference_ticker(tuple): ('xxx', 'yyy') where xxx is the base_asset\
-                and yyy is the reference asset for indexing the timestamp
-            aggregate_coordinate_by(str): The direction in which the coordinates\
-                should be aggregated by
+            reference_ticker(tuple): ('xxx', 'yyy') where xxx is the \
+                base_asset and yyy is the reference asset \
+                for indexing the timestamp
+            aggregate_coordinate_by(str): The direction in which the \
+                coordinates should be aggregated by
             ohlcv_fields(List): list of ohlcv-fields necessary to capture
             weight(str): weight/interval of the kline/candle
-            start_time(str/datetime.datetime/int): start time/date of the candles
-            end_time(str/datetime.datetime/int): end time/date of the candles
+            start_time(str/datetime.datetime/int): start time/date of \
+                the candles
+            end_time(str/datetime.datetime/int): end time/date of \
+                the candles
 
         Yields:
             TimeStampIndexedDataContainer constructed with above details
@@ -600,7 +603,8 @@ class TimeAggregatedDataContainer:
 
     @staticmethod
     def get_sorted_dataarray(
-        dataarray: xr.DataArray, coordinate: str
+        dataarray: xr.DataArray,
+        coordinate: str
     ) -> xr.DataArray:
         """
         Sorts the given dataarray in the given coordinate direction

@@ -16,7 +16,8 @@ async def main():
         base_assets=["NANO", "AMB", "XRP"],
         reference_assets=["BTC", "USDT"],
         ohlcv_fields=desired_fields,
-        time_range_dict={("25 Jan 2018", "27 Feb 2018"): "1d"}
+        time_range_dict={("25 Jan 2018", "27 Feb 2018"): "1d",
+                         ("26 Aug 2020", "now"):         "1w"}
     )
     xdataarray_of_coins = await time_aggregated_data_container.get_time_aggregated_data_container()
     pprint(xdataarray_of_coins)
