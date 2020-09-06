@@ -32,5 +32,5 @@ Indices and tables
 Examples
 ===========
 
-* A basic example which interacts with Binance exchange, gets information on assets available and stores a basic `xarray.DataArray` is available `here <https://github.com/vikramaditya91/crypto_history/tree/master/examples/binance_basic.py>`_
-* A second example which displays how the data is type corrected, incomplete data is expunged is available `here <https://github.com/vikramaditya91/crypto_history/tree/master/examples/coin_history_post_process.py>`_
+* A basic example which interacts with Binance exchange, gets information on assets available and stores a basic `xarray.DataArray` is available at `binance-basic <https://github.com/vikramaditya91/crypto_history/tree/master/examples/binance_basic.py>`_
+* A second example which displays how the data is type corrected, incomplete data is expunged is available `coin-history-post-processing <https://github.com/vikramaditya91/crypto_history/tree/master/examples/coin_history_post_process.py>`_

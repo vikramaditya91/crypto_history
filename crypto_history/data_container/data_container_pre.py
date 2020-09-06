@@ -28,19 +28,6 @@ class PrimitiveCoinHistoryObtainer:
         start_time: Union[str, datetime, int],
         end_time: Union[str, datetime, int],
     ):
-        """
-        Generates the coin history obtainer
-
-        Args:
-            exchange_factory(StockMarketFactory): instance of\
-             the exchange_factory which is responsible for \
-            setting the market_homogenizer
-            interval(str): Length of the history of the klines per item
-            start_time(str/datetime/int): duration from which history \
-               is necessary
-            end_time(str/datetime/int): duration up to which history \
-               is necessary
-        """
         self.market_harmonizer = market_harmonizer
         self.data_container = None
         self.interval = interval
@@ -57,7 +44,24 @@ class PrimitiveCoinHistoryObtainer:
         interval: str,
         start_time: Union[str, datetime, int],
         end_time: Union[str, datetime, int],
-    ):
+    ) -> PrimitiveCoinHistoryObtainer:
+        """
+        Generates the coin history obtainer
+
+        Args:
+            exchange_factory(StockMarketFactory): instance of\
+             the exchange_factory which is responsible for \
+            setting the market_homogenizer
+            interval(str): Length of the history of the klines per item
+            start_time(str/datetime/int): duration from which history \
+               is necessary
+            end_time(str/datetime/int): duration up to which history \
+               is necessary
+
+        Yields:
+            PrimitiveCoinHistoryObtainer instance from the above \
+            arguments
+        """
         async with exchange_factory.create_data_homogenizer() \
                 as market_harmonizer:
             yield cls(
@@ -176,13 +180,13 @@ class PrimitiveDimensionsManager:
         index_number: List
 
     def __init__(self, history_obtainer):
-        """Initializes the dimensions manager with the coin_history_obtainer"""
         self.coin_history_obtainer = history_obtainer
 
     @classmethod
     def create_primitive_dimensions_manager(
         cls, history_obtainer: PrimitiveCoinHistoryObtainer
-    ):
+    ) -> PrimitiveDimensionsManager:
+        """Initializes the dimensions manager with the coin_history_obtainer"""
         return PrimitiveDimensionsManager(history_obtainer)
 
     async def get_depth_of_indices(self) -> List:
@@ -257,21 +261,6 @@ class PrimitiveDataArrayOperations:
         ohlcv_fields: List,
         interval: str,
     ):
-        """
-        Initializes the DataContainerOperations which is the user \
-        end-point for the basic data building
-        Args:
-            exchange_factory (StockMarketFactory): factory of the exchange
-            base_assets (List): list of base coins to be accumulated
-            reference_assets (List): list of reference/quote-against\
-             coins to be accumulated
-            ohlcv_fields (List): list of fields for the various fields
-            interval (str): data capture interval
-            start_time (str/datetime/int): date from which data collection \
-                should start
-            end_time (str/datetime/int): date up to which data collection \
-                should be made
-        """
         self.history_obtainer = history_obtainer
         self.dimension_manager = dimensions_manager
         self.dataframe_operations = DataFrameOperations()
@@ -292,6 +281,23 @@ class PrimitiveDataArrayOperations:
         start_time: Union[str, datetime, int],
         end_time: Union[str, datetime, int],
     ):
+        """
+        Initializes the DataContainerOperations which is the user \
+        end-point for the basic data building
+        Args:
+            exchange_factory (StockMarketFactory): factory of the exchange
+            base_assets (List): list of base coins to be accumulated
+            reference_assets (List): list of reference/quote-against\
+             coins to be accumulated
+            ohlcv_fields (List): list of fields for the various fields
+            interval (str): data capture interval
+            start_time (str/datetime/int): date from which data collection \
+                should start
+            end_time (str/datetime/int): date up to which data collection \
+                should be made
+        Yields:
+            PrimitiveDataArrayOperations instance from the above arguments
+        """
         async with PrimitiveCoinHistoryObtainer.\
                 create_primitive_coin_history_obtainer(
                 exchange_factory, interval, start_time, end_time

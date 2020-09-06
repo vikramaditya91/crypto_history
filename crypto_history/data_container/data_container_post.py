@@ -109,6 +109,8 @@ class HandleIncompleteData:
                      f"data has coordinates: {data_item.coords}")
         for coordinate in self.coordinates_to_drop:
             data_item = data_item.dropna(coordinate, how="all")
+        logger.debug(f"{type(data_item)} after dropping entire "
+                     f"data has coordinates: {data_item.coords}")
         return data_item
 
     def get_all_combinations(self, data_item: Union[xr.DataArray, xr.Dataset]):

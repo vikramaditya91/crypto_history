@@ -44,6 +44,25 @@ class TimeStampIndexedDataContainer:
         start_time: Union[str, datetime.datetime, int],
         end_time: Union[str, datetime.datetime, int],
     ):
+        """
+        The factory for creating the time stamp indexed data container
+        Args:
+            exchange_factory (StockMarketFactory): The exchange factory
+            base_assets(List): List of base assets
+            reference_assets(List): List of reference assets
+            reference_ticker(tuple): ('xxx', 'yyy') where xxx is the base_asset\
+                and yyy is the reference asset for indexing the timestamp
+            aggregate_coordinate_by(str): The direction in which the coordinates\
+                should be aggregated by
+            ohlcv_fields(List): list of ohlcv-fields necessary to capture
+            weight(str): weight/interval of the kline/candle
+            start_time(str/datetime.datetime/int): start time/date of the candles
+            end_time(str/datetime.datetime/int): end time/date of the candles
+
+        Yields:
+            TimeStampIndexedDataContainer constructed with above details
+
+        """
         async with PrimitiveDataArrayOperations.\
                 create_primitive_data_array_operations(
                     exchange_factory,

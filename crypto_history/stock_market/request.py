@@ -22,7 +22,7 @@ class AbstractMarketRequester(ABC):
     async def __aenter__(self):
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, *args):
         await self._client.close()
 
     async def request(self, method_name: str, *args, **kwargs):
