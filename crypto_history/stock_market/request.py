@@ -19,6 +19,12 @@ class AbstractMarketRequester(ABC):
         self.retry_strategy_class = RetryModel
         self.request_queue = None
 
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        await self._client.close()
+
     async def request(self, method_name: str, *args, **kwargs):
         """
         Interface to the user of the low level request made to the API server

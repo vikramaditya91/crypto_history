@@ -1,6 +1,12 @@
 Changelog
 =========
 
+1.2b1 (2020-Sep-06)
+------------------
+ * partially or fully incomplete histories can be purged if necessary
+ * their types are set according to the ohlcv-field
+ * Auto-build readthedocs on pull-request enabled
+
 1.2b0 (2020-Aug-30)
 ------------------
  * timestamp chunks are generated based on the max-limit provided by the exchange

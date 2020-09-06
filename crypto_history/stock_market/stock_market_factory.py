@@ -3,14 +3,16 @@ import logging
 import asyncio
 import math
 import re
-from dateutil import parser
 import datetime
+import contextlib
+from dateutil import parser
 from abc import ABC, abstractmethod
 from typing import Union, List, Dict, Generator
 from functools import lru_cache
 from collections import namedtuple
 from binance import enums, client
 from dataclasses import make_dataclass
+from pydoc import locate
 from crypto_history.stock_market.tickers import BinanceTickerPool, TickerPool
 from crypto_history.stock_market.request import (
     AbstractMarketRequester,
@@ -87,7 +89,8 @@ class ConcreteBinanceFactory(StockMarketFactory):
         """
         return BinanceRequester()
 
-    def create_market_operations(self) -> BinanceMarketOperations:
+    @contextlib.asynccontextmanager
+    async def create_market_operations(self) -> BinanceMarketOperations:
         """
         Creates the instance of the Binance Market Operator
 
@@ -95,10 +98,11 @@ class ConcreteBinanceFactory(StockMarketFactory):
              BinanceMarketOperations: Instance of BinanceMarketOperator
 
         """
-        market_requester = self.create_market_requester()
-        return BinanceMarketOperations(market_requester)
+        async with self.create_market_requester() as market_requester:
+            yield BinanceMarketOperations(market_requester)
 
-    def create_data_homogenizer(self) -> BinanceHomogenizer:
+    @contextlib.asynccontextmanager
+    async def create_data_homogenizer(self) -> BinanceHomogenizer:
         """
         Creates the instance of the Binance Market Homogenizer
 
@@ -106,9 +110,9 @@ class ConcreteBinanceFactory(StockMarketFactory):
              BinanceHomogenizer: Instance of BinanceHomogenizer
 
         """
-        market_operator = self.create_market_operations()
-        type_checker = self.create_ohlcv_field_types()
-        return BinanceHomogenizer(market_operator, type_checker)
+        async with self.create_market_operations() as market_operator:
+            type_checker = self.create_ohlcv_field_types()
+            yield BinanceHomogenizer(market_operator, type_checker)
 
     @staticmethod
     def create_ohlcv_field_types() -> BinanceOHLCVFieldTypes:
@@ -586,6 +590,14 @@ class AbstractOHLCVFieldTypes(ABC):
             self.OHLCVFields.__name__, self.OHLCVFields.__annotations__.keys()
         )
 
+    def get_dict_name_type(self):
+        return dict(
+            map(
+                lambda x: (x[0], locate(x[1])),
+                self.OHLCVFields.__annotations__.items(),
+            )
+        )
+
 
 class BinanceOHLCVFieldTypes(AbstractOHLCVFieldTypes):
     """Fields for the named tuple of the OHLCV returned by Binance \
@@ -667,8 +679,9 @@ class AbstractTimeIntervalChunks(ABC):
                 final_time_range.append((chunk, type_of_interval))
                 for chunk in sanitized_sub_chunks
             ]
-        logger.info(f"The time histories have been chunked into"
-                    f" {final_time_range}")
+        logger.info(
+            f"The time histories have been chunked into" f" {final_time_range}"
+        )
         return final_time_range
 
     def get_exchange_specific_sub_chunks(

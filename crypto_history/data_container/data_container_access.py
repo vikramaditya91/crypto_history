@@ -3,6 +3,7 @@ import datetime
 import xarray as xr
 import numpy as np
 import pandas as pd
+import contextlib
 from typing import List, Dict, Union, Tuple
 from ..stock_market.stock_market_factory import StockMarketFactory
 from .data_container_pre import PrimitiveDataArrayOperations
@@ -18,6 +19,21 @@ class TimeStampIndexedDataContainer:
 
     def __init__(
         self,
+        primitive_full_data_container: PrimitiveDataArrayOperations,
+        primitive_reference_data_container: PrimitiveDataArrayOperations,
+        aggregate_coordinate_by: str,
+    ):
+        self.aggregate_coordinate_by = aggregate_coordinate_by
+        self.primitive_full_data_container = primitive_full_data_container
+        self.primitive_reference_data_container = (
+            primitive_reference_data_container
+        )
+        self.ohlcv_coord_name = "ohlcv_fields"
+
+    @classmethod
+    @contextlib.asynccontextmanager
+    async def create_time_stamp_indexed_data_container(
+        cls,
         exchange_factory: StockMarketFactory,
         base_assets: List,
         reference_assets: List,
@@ -28,27 +44,54 @@ class TimeStampIndexedDataContainer:
         start_time: Union[str, datetime.datetime, int],
         end_time: Union[str, datetime.datetime, int],
     ):
-        self.aggregate_coordinate_by = aggregate_coordinate_by
-        self.primitive_full_data_container = PrimitiveDataArrayOperations(
-            exchange_factory,
-            base_assets,
-            reference_assets,
-            ohlcv_fields,
-            weight,
-            start_time,
-            end_time,
-        )
-        reference_base, reference_quote = reference_ticker
-        self.primitive_reference_data_container = PrimitiveDataArrayOperations(
-            exchange_factory,
-            [reference_base],
-            [reference_quote],
-            ohlcv_fields,
-            weight,
-            start_time,
-            end_time,
-        )
-        self.ohlcv_coord_name = "ohlcv_fields"
+        """
+        The factory for creating the time stamp indexed data container
+        Args:
+            exchange_factory (StockMarketFactory): The exchange factory
+            base_assets(List): List of base assets
+            reference_assets(List): List of reference assets
+            reference_ticker(tuple): ('xxx', 'yyy') where xxx is the \
+                base_asset and yyy is the reference asset \
+                for indexing the timestamp
+            aggregate_coordinate_by(str): The direction in which the \
+                coordinates should be aggregated by
+            ohlcv_fields(List): list of ohlcv-fields necessary to capture
+            weight(str): weight/interval of the kline/candle
+            start_time(str/datetime.datetime/int): start time/date of \
+                the candles
+            end_time(str/datetime.datetime/int): end time/date of \
+                the candles
+
+        Yields:
+            TimeStampIndexedDataContainer constructed with above details
+
+        """
+        async with PrimitiveDataArrayOperations.\
+                create_primitive_data_array_operations(
+                    exchange_factory,
+                    base_assets,
+                    reference_assets,
+                    ohlcv_fields,
+                    weight,
+                    start_time,
+                    end_time,
+                ) as primtive_data_operations:
+            reference_base, reference_quote = reference_ticker
+            async with PrimitiveDataArrayOperations.\
+                    create_primitive_data_array_operations(
+                        exchange_factory,
+                        [reference_base],
+                        [reference_quote],
+                        ohlcv_fields,
+                        weight,
+                        start_time,
+                        end_time,
+                    ) as primitive_reference_data_container:
+                yield cls(
+                    primtive_data_operations,
+                    primitive_reference_data_container,
+                    aggregate_coordinate_by,
+                )
 
     @staticmethod
     async def get_primitive_xr_dataarray(
@@ -512,21 +555,22 @@ class TimeAggregatedDataContainer:
             xr.DataArray the history of the chunk
 
         """
-        time_stamp_indexed_container = TimeStampIndexedDataContainer(
-            exchange_factory=self.exchange_factory,
-            base_assets=self.base_assets,
-            reference_assets=self.reference_assets,
-            reference_ticker=self.reference_ticker,
-            aggregate_coordinate_by=self.aggregate_coordinate_by,
-            ohlcv_fields=self.ohlcv_fields,
-            weight=kline_width,
-            start_time=start_time,
-            end_time=end_time,
-        )
-        return await time_stamp_indexed_container.\
-            get_xr_dataarray_indexed_by_timestamps(
-                do_approximation=False
-            )
+        async with TimeStampIndexedDataContainer.\
+                create_time_stamp_indexed_data_container(
+                    exchange_factory=self.exchange_factory,
+                    base_assets=self.base_assets,
+                    reference_assets=self.reference_assets,
+                    reference_ticker=self.reference_ticker,
+                    aggregate_coordinate_by=self.aggregate_coordinate_by,
+                    ohlcv_fields=self.ohlcv_fields,
+                    weight=kline_width,
+                    start_time=start_time,
+                    end_time=end_time,
+                ) as time_stamp_indexed_container:
+            return await time_stamp_indexed_container.\
+                get_xr_dataarray_indexed_by_timestamps(
+                    do_approximation=False
+                )
 
     async def get_time_aggregated_data_container(
         self, sort: bool = True
