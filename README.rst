@@ -24,7 +24,7 @@ Welcome to crypto-history
     :alt: crypto-history download status per week
 
 .. image:: https://coveralls.io/repos/github/vikramaditya91/crypto_history/badge.svg?branch=feature/match-index-dataframe
-    :target: https://coveralls.io/github/vikramaditya91/crypto_history?branch=feature/match-index-dataframe
+    :target: https://coveralls.io/github/vikramaditya91/crypto_history?branch=master
     :alt: crypto-history coveralls coverage
 
 
@@ -32,7 +32,7 @@ This is a wrapper on binance and other exchange APIs to aggregate historical inf
 in structured tabular formats (such as xarray.DataArray)
 
 Source code
-  https://github.com/vikramaditya91/crypto-history
+  https://github.com/vikramaditya91/crypto_history
 
 Documentation
   https://crypto-history.readthedocs.io/en/latest/
