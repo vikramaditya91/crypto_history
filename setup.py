@@ -43,6 +43,11 @@ extras["dev"] = extras["lint"] + extras["test"]
 setup(
     name=PACKAGE_NAME,
     author="Vikramaditya Gaonkar",
+    packages=["crypto_history",
+              "crypto_history.data_container",
+              "crypto_history.stock_market",
+              "crypto_history.utilities"],
+    url="https://github.com/vikramaditya91/crypto_history",
     author_email="vikramaditya91@gmail.com",
     python_requires=">=3.8.0",
     classifiers=[

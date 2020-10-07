@@ -1,6 +1,11 @@
 Changelog
 =========
 
+
+1.2b3 (2020-Oct-08)
+------------------
+ * build python package with python files included
+
 1.2b1 (2020-Sep-06)
 ------------------
  * partially or fully incomplete histories can be purged if necessary
