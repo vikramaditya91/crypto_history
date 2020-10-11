@@ -24,6 +24,8 @@ from crypto_history.utilities.general_utilities import (
     register_factory,
     get_dataclass_from_dict,
 )
+from crypto_history.utilities.datetime_operations import \
+    DateTimeOperations
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +76,7 @@ class StockMarketFactory(AbstractFactory):
         pass
 
 
-@register_factory("market")
+@register_factory(section="market", identifier="binance")
 class ConcreteBinanceFactory(StockMarketFactory):
     """Binance's factory for creating factories"""
 
@@ -137,7 +139,7 @@ class ConcreteBinanceFactory(StockMarketFactory):
         return BinanceTimeIntervalChunks()
 
 
-@register_factory("market")
+@register_factory(section="market", identifier="some_other_exchange")
 class ConcreteSomeOtherExchangeFactory(StockMarketFactory):
     """Demo for how another exchange/market's factories would be\
      implemented in this module"""
@@ -635,15 +637,6 @@ class AbstractTimeIntervalChunks(ABC):
     limit = math.inf
     url = ""
 
-    string_match_timedelta_dict = {
-        "m": datetime.timedelta(minutes=1),
-        "h": datetime.timedelta(hours=1),
-        "d": datetime.timedelta(days=1),
-        "w": datetime.timedelta(weeks=1),
-        # 31 days chosen to not have insufficient lengths
-        "M": datetime.timedelta(days=31),
-    }
-
     def get_time_range_for_historical_calls(
         self, raw_time_range_dict: Dict
     ) -> List[tuple]:
@@ -660,13 +653,14 @@ class AbstractTimeIntervalChunks(ABC):
 
         """
         final_time_range = []
+        datetime_operations = DateTimeOperations()
         for (
             (start_time, end_time),
             type_of_interval,
         ) in raw_time_range_dict.items():
             sanitized_start = self.sanitize_item_to_datetime_object(start_time)
             sanitized_end = self.sanitize_item_to_datetime_object(end_time)
-            sanitized_kline_width = self.map_string_to_timedelta(
+            sanitized_kline_width = datetime_operations.map_string_to_timedelta(
                 type_of_interval
             )
             sub_chunks = self._get_chunks_from_start_end_complete(
@@ -817,31 +811,7 @@ class AbstractTimeIntervalChunks(ABC):
         """Converts the datetime object to exchange specific format"""
         pass
 
-    def map_string_to_timedelta(self, time_string: str) -> datetime.timedelta:
-        """
-        Maps the string to timedelta
-        Args:
-            time_string: string which is supposed to represent time
 
-        Returns:
-            datetime.timedelta object of the string of time
-
-        """
-        number_of_items = int(re.search("[0-9]+", time_string).group())
-        string_to_match = re.search("[a-zA-Z]+", time_string).group()
-        try:
-            timedelta_of_string = self.string_match_timedelta_dict[
-                string_to_match
-            ]
-        except KeyError:
-            raise KeyError(
-                f"{string_to_match} could not match with anything "
-                f"in the exchange. \nVisit {self.url}"
-                f" for possible intervals"
-            )
-        return datetime.timedelta(
-            seconds=(timedelta_of_string.total_seconds() * number_of_items)
-        )
 
 
 class BinanceTimeIntervalChunks(AbstractTimeIntervalChunks):

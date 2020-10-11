@@ -6,6 +6,7 @@ import numpy as np
 from typing import Union, Dict
 from collections import OrderedDict
 from ..stock_market.stock_market_factory import StockMarketFactory
+from crypto_history.utilities import datetime_operations
 
 logger = logging.getLogger(__package__)
 
@@ -180,3 +181,45 @@ class HandleIncompleteData:
                 for ohlcv_field in list(dataset.keys()):
                     dataset[ohlcv_field].loc[combination] = np.nan
         return dataset
+
+
+class ApplyWeightToDataArray:
+    def get_weights_numpy_array(self,
+                                numpy_array: np.ndarray) -> np.ndarray:
+        date_time_operator = datetime_operations.DateTimeOperations()
+        string_to_seconds = date_time_operator.map_string_to_seconds
+        return np.vectorize(string_to_seconds)(numpy_array)
+
+    def correct_shaped_np_array(self,
+                                numpy_array: np.ndarray,
+                                len_ohlcv_fields: int):
+        # TODO This should ideally do setting indices programatically
+        numpy_array_dim_added = np.expand_dims(numpy_array, 3)
+        return np.tile(numpy_array_dim_added, (1, 1, 1, len_ohlcv_fields))
+
+    def get_weights_dataarray(self,
+                              original_dataarray: xr.DataArray) -> xr.DataArray:
+        numpy_weights = self.get_weights_numpy_array(original_dataarray.loc[:, :, :, "weight"])
+        well_shaped_np_array = self.correct_shaped_np_array(
+            numpy_weights,
+            len(original_dataarray.ohlcv_fields)
+        )
+        return xr.DataArray(
+            well_shaped_np_array,
+            dims=original_dataarray.dims,
+            coords=original_dataarray.coords
+        )
+
+    def get_weighted_data_container(self,
+                                    original_dataarray: xr.DataArray):
+        weights_dataarray = self.get_weights_dataarray(original_dataarray)
+        return original_dataarray.weighted(weights_dataarray)
+
+    def switch_str_to_float(self,
+                            original_da: xr.DataArray):
+        float_np = self.get_weights_numpy_array(original_da.values)
+        return xr.DataArray(
+            float_np,
+            dims=original_da.dims,
+            coords=original_da.coords
+        )

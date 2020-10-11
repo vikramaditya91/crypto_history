@@ -2,6 +2,7 @@ from __future__ import annotations
 import logging
 import contextlib
 import xarray as xr
+import numpy as np
 from pandas import DataFrame
 from dataclasses import dataclass, fields
 from typing import Union, List, Dict
@@ -10,9 +11,11 @@ from crypto_history.stock_market.tickers import TickerPool
 from crypto_history.stock_market.stock_market_factory import (
     StockMarketFactory,
     AbstractMarketHomogenizer,
+    AbstractTimeIntervalChunks
 )
-from .utilities import DataFrameOperations
-from ..utilities import general_utilities, exceptions
+from crypto_history.data_container.utilities import DataFrameOperations
+from crypto_history.utilities import general_utilities, exceptions,\
+    datetime_operations
 
 logger = logging.getLogger(__name__)
 
@@ -421,3 +424,4 @@ class PrimitiveDataArrayOperations:
                 data_container, base_asset, reference_asset, history_df
             )
         return data_container
+        

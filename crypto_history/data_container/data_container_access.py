@@ -150,7 +150,9 @@ class TimeStampIndexedDataContainer:
             field sorted increasingly
 
         """
-        selected_da = dataarray.sel({coord_name: field_in_coord})
+        selected_da = dataarray.sel(
+            {coord_name: field_in_coord}
+        )
         flattened_np_array = selected_da.values.flatten()
         none_removed = flattened_np_array[flattened_np_array != np.array(None)]
         nan_removed = none_removed[~pd.isnull(none_removed)]
@@ -228,7 +230,6 @@ class TimeStampIndexedDataContainer:
             xr.DataSet data of the coin history
         """
         populated_dataarray = await self.get_primitive_full_xr_dataarray()
-
         new_df = await self.generate_empty_df_with_new_timestamps(
             do_approximation, populated_dataarray
         )
@@ -299,7 +300,9 @@ class TimeStampIndexedDataContainer:
             return 0
 
     def get_coords_for_timestamp_indexed_datarray(
-        self, old_dataarray: xr.DataArray, reference_ts: List
+        self,
+        old_dataarray: xr.DataArray,
+        reference_ts: List[int]
     ) -> Dict:
         """
         Gets the coordinates for the timestamp index dataarray
