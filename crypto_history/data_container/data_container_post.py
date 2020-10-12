@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 from typing import Union, Dict
 from collections import OrderedDict
-from ..stock_market.stock_market_factory import StockMarketFactory
+from crypto_history.stock_market.stock_market_factory import StockMarketFactory
 from crypto_history.utilities import datetime_operations
 
 logger = logging.getLogger(__package__)
