@@ -3,7 +3,7 @@ from pprint import pprint
 from crypto_history import class_builders, \
     init_logger, data_container_access
 import logging
-
+from datetime import timedelta
 
 async def main():
     init_logger(level=logging.DEBUG)
@@ -17,19 +17,21 @@ async def main():
         print(f"All the base assets available on the "
               f"Binance exchange are {base_assets}")
 
-        reference_assets = await binance_homogenizer.get_all_refernce_assets()
+        reference_assets = await binance_homogenizer.get_all_reference_assets()
         print(f"All the reference assets available on the"
               f" Binance exchange are {reference_assets}")
 
-    time_range = {("25 Jan 2018", "27 Feb 2018"): "1d"}
+    time_range_timedelta_dict =\
+        {(timedelta(weeks=8), timedelta(weeks=4)): "1d"}
     time_aggregated_data_container = data_container_access.\
-        TimeAggregatedDataContainer(
+        TimeAggregatedDataContainer.create_instance_from_timedeltas(
             exchange_factory,
             base_assets=["NANO"],
             reference_assets=["BTC", "USDT"],
             ohlcv_fields=desired_fields,
-            time_range_dict=time_range
+            time_range_timedelta_dict=time_range_timedelta_dict
         )
+
     xdataarray_of_coins = await time_aggregated_data_container.get_time_aggregated_data_container()
     pprint(xdataarray_of_coins)
 

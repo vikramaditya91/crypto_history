@@ -481,13 +481,16 @@ class TimeStampIndexedDataContainer:
 
 
 class TimeAggregatedDataContainer:
+    """Aggregates various time-ranges into the data container"""
     def __init__(
         self,
         exchange_factory: StockMarketFactory,
         base_assets: List[str],
         reference_assets: List[str],
         ohlcv_fields: List[str],
-        time_range_dict: Dict,
+        time_range_dict: Dict[Tuple[Union[str, datetime.datetime],
+                                    Union[str, datetime.datetime]],
+                              str],
         reference_ticker: Tuple = ("ETH", "BTC"),
         aggregate_coordinate_by: str = "open_ts",
     ):
@@ -500,6 +503,52 @@ class TimeAggregatedDataContainer:
         self.aggregate_coordinate_by = aggregate_coordinate_by
         self.time_interval_splitter = (
             exchange_factory.create_time_interval_chunks()
+        )
+
+    @classmethod
+    def create_instance_from_timedeltas(cls,
+                                        exchange_factory: StockMarketFactory,
+                                        base_assets: List[str],
+                                        reference_assets: List[str],
+                                        ohlcv_fields: List[str],
+                                        time_range_timedelta_dict:
+                                        Dict[Tuple[datetime.timedelta,
+                                                   datetime.timedelta],
+                                             str],
+                                        reference_ticker: Tuple = ("ETH", "BTC"),
+                                        aggregate_coordinate_by: str = "open_ts",
+                                        ):
+        """
+        Creates the time-aggregator from time-deltas which go back from the current time
+        Args:
+            exchange_factory (StockMarketFactory): The exchange factory
+            base_assets (List): base-asset coins 
+            reference_assets (List): reference-asset coins 
+            ohlcv_fields (List): ohlcv-fields to calculate 
+            time_range_timedelta_dict (Dict): dictionary of time-ranges where the keys are \
+            tuples of timedeltas 
+            reference_ticker (Tuple): reference-ticker for reference timestamps 
+            aggregate_coordinate_by (str): Timestamp indexed by this value 
+
+        Returns:
+            TimeAggregatedDataContainer
+
+        """
+        time_range_dict = {}
+        time_now = datetime.datetime.now()
+        for (time_start, time_end), candle in time_range_timedelta_dict.items():
+            datetime_start = time_now - time_start
+            datetime_end = time_now - time_end
+            time_range_dict[(datetime_start,
+                             datetime_end)] = candle
+        return cls(
+            exchange_factory,
+            base_assets=base_assets,
+            reference_assets=reference_assets,
+            ohlcv_fields=ohlcv_fields,
+            time_range_dict=time_range_dict,
+            reference_ticker=reference_ticker,
+            aggregate_coordinate_by=aggregate_coordinate_by
         )
 
     def get_time_interval_chunks(self, time_range: Dict) -> List[tuple]:
