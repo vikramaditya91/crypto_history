@@ -184,15 +184,32 @@ class HandleIncompleteData:
 
 
 class ApplyWeightToDataArray:
-    def get_weights_numpy_array(self,
-                                numpy_array: np.ndarray) -> np.ndarray:
+    @staticmethod
+    def get_weights_numpy_float_array(numpy_array: np.ndarray) -> np.ndarray:
+        """
+        Obtains the numpy array in float values from the string
+        Args:
+            numpy_array: np.ndarray numpy array of strings
+
+        Returns: np.ndarray numpy array of seconds (float values)
+
+        """
         date_time_operator = datetime_operations.DateTimeOperations()
         string_to_seconds = date_time_operator.map_string_to_seconds
         return np.vectorize(string_to_seconds)(numpy_array)
 
-    def correct_shaped_np_array(self,
-                                numpy_array: np.ndarray,
-                                len_ohlcv_fields: int):
+    @staticmethod
+    def correct_shaped_np_array(numpy_array: np.ndarray,
+                                len_ohlcv_fields: int) -> np.ndarray:
+        """
+        Fix the shape of the np array by filling in the shape
+        Args:
+            numpy_array: np.ndarray whose shape is not ok
+            len_ohlcv_fields: int of the duplication required
+
+        Returns: np.ndarray whose shape is as expected for the da
+
+        """
         # TODO This should ideally do setting indices programatically
         numpy_array_dim_added = np.expand_dims(numpy_array, 3)
         return np.tile(numpy_array_dim_added, (1, 1, 1, len_ohlcv_fields))
@@ -200,7 +217,16 @@ class ApplyWeightToDataArray:
     def get_weights_dataarray(self,
                               original_dataarray: xr.DataArray
                               ) -> xr.DataArray:
-        numpy_weights = self.get_weights_numpy_array(
+        """
+        Gets the da of weights
+        Args:
+            original_dataarray: xr.DataArray which is not weighted,\
+             but has a "weight" data_var
+
+        Returns: xr.DataArray which is weighted
+
+        """
+        numpy_weights = self.get_weights_numpy_float_array(
             original_dataarray.loc[:, :, :, "weight"]
         )
         well_shaped_np_array = self.correct_shaped_np_array(
@@ -215,12 +241,29 @@ class ApplyWeightToDataArray:
 
     def get_weighted_data_container(self,
                                     original_dataarray: xr.DataArray):
+        """
+        Gets the weighted xr.DataArray
+        Args:
+            original_dataarray: xr.DataArray which has to be weighted
+
+        Returns: xr.DataArray which is weighted
+
+        """
         weights_dataarray = self.get_weights_dataarray(original_dataarray)
         return original_dataarray.weighted(weights_dataarray)
 
     def switch_str_to_float(self,
-                            original_da: xr.DataArray):
-        float_np = self.get_weights_numpy_array(original_da.values)
+                            original_da: xr.DataArray
+                            ) -> xr.DataArray:
+        """
+        Switches a dataarray of strings to dataarray of floats
+        Args:
+            original_da: xr.DataArray whose values are str
+
+        Returns: xr.DataArray whose values are float
+
+        """
+        float_np = self.get_weights_numpy_float_array(original_da.values)
         return xr.DataArray(
             float_np,
             dims=original_da.dims,

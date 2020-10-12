@@ -45,12 +45,12 @@ class DateTimeOperations:
 
     def map_string_to_seconds(self, time_string: str) -> float:
         """
-        Maps the string to timedelta
+        Maps the string to seconds
         Args:
             time_string: string which is supposed to represent time
 
         Returns:
-            datetime.timedelta object of the string of time
+            float: seconds of the time_string
 
         """
         return self.map_string_to_timedelta(time_string).total_seconds()
