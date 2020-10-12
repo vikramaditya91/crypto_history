@@ -9,10 +9,10 @@ from datetime import datetime
 from crypto_history.stock_market.tickers import TickerPool
 from crypto_history.stock_market.stock_market_factory import (
     StockMarketFactory,
-    AbstractMarketHomogenizer,
+    AbstractMarketHomogenizer
 )
-from .utilities import DataFrameOperations
-from ..utilities import general_utilities, exceptions
+from crypto_history.data_container.utilities import DataFrameOperations
+from crypto_history.utilities import general_utilities, exceptions
 
 logger = logging.getLogger(__name__)
 

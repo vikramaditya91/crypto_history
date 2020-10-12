@@ -1,6 +1,5 @@
 import logging
 import asyncio
-import re
 from datetime import datetime
 from typing import Dict
 from abc import ABC
@@ -126,30 +125,11 @@ class AbstractFactory(ABC):
 
     _builders = {}
 
-    @staticmethod
-    def valid_subclass_to_register(class_instance):
-        """Checks if the class name is a valid format"""
-        if re.match("Concrete.*Factory", class_instance.__name__) is None:
-            return False
-        return True
-
-    @staticmethod
-    def get_identifier_string(class_type):
-        """Extracts the name from the name of the class"""
-        matched = re.match("Concrete(.*)Factory", class_type.__name__)
-        return matched.group(1).lower()
-
     @classmethod
-    def register_builder(cls, factory_type, class_type):
+    def register_builder(cls, factory_type, identifier, class_type):
         """Registers the factory to be used later by the user"""
-        assert cls.valid_subclass_to_register(class_type), (
-            "Not a valid class to register. "
-            "Ensure that the name follows the format "
-            "'Concrete.*Factory'"
-        )
         if factory_type not in cls._builders.keys():
             cls._builders[factory_type] = {}
-        identifier = cls.get_identifier_string(class_type)
         cls._builders[factory_type][identifier] = class_type
 
     @classmethod
@@ -157,12 +137,13 @@ class AbstractFactory(ABC):
         return cls._builders
 
 
-def register_factory(factory_type):
+def register_factory(section, identifier):
     """Decorator for registering factories in the factory_types"""
-
     def decorate(decorated_class_type):
         """Registers the class type in the factory_type"""
-        AbstractFactory.register_builder(factory_type, decorated_class_type)
+        AbstractFactory.register_builder(section,
+                                         identifier,
+                                         decorated_class_type)
 
         class Wrapper:
             pass
