@@ -1,6 +1,11 @@
 Changelog
 =========
 
+1.2b4 (2020-Oct-12)
+------------------
+ * weighted data containers available
+ * ability to change string weights to float
+
 
 1.2b3 (2020-Oct-08)
 ------------------
