@@ -2,7 +2,6 @@ from __future__ import annotations
 import logging
 import asyncio
 import math
-import re
 import datetime
 import contextlib
 from dateutil import parser
@@ -660,9 +659,10 @@ class AbstractTimeIntervalChunks(ABC):
         ) in raw_time_range_dict.items():
             sanitized_start = self.sanitize_item_to_datetime_object(start_time)
             sanitized_end = self.sanitize_item_to_datetime_object(end_time)
-            sanitized_kline_width = datetime_operations.map_string_to_timedelta(
-                type_of_interval
-            )
+            sanitized_kline_width = datetime_operations.\
+                map_string_to_timedelta(
+                    type_of_interval
+                )
             sub_chunks = self._get_chunks_from_start_end_complete(
                 sanitized_start, sanitized_end, sanitized_kline_width
             )
@@ -810,8 +810,6 @@ class AbstractTimeIntervalChunks(ABC):
     ):
         """Converts the datetime object to exchange specific format"""
         pass
-
-
 
 
 class BinanceTimeIntervalChunks(AbstractTimeIntervalChunks):

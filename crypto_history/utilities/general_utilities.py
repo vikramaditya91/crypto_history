@@ -1,6 +1,5 @@
 import logging
 import asyncio
-import re
 from datetime import datetime
 from typing import Dict
 from abc import ABC
@@ -142,7 +141,9 @@ def register_factory(section, identifier):
     """Decorator for registering factories in the factory_types"""
     def decorate(decorated_class_type):
         """Registers the class type in the factory_type"""
-        AbstractFactory.register_builder(section, identifier, decorated_class_type)
+        AbstractFactory.register_builder(section,
+                                         identifier,
+                                         decorated_class_type)
 
         class Wrapper:
             pass

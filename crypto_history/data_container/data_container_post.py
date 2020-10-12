@@ -198,8 +198,11 @@ class ApplyWeightToDataArray:
         return np.tile(numpy_array_dim_added, (1, 1, 1, len_ohlcv_fields))
 
     def get_weights_dataarray(self,
-                              original_dataarray: xr.DataArray) -> xr.DataArray:
-        numpy_weights = self.get_weights_numpy_array(original_dataarray.loc[:, :, :, "weight"])
+                              original_dataarray: xr.DataArray
+                              ) -> xr.DataArray:
+        numpy_weights = self.get_weights_numpy_array(
+            original_dataarray.loc[:, :, :, "weight"]
+        )
         well_shaped_np_array = self.correct_shaped_np_array(
             numpy_weights,
             len(original_dataarray.ohlcv_fields)

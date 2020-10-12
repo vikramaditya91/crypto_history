@@ -3,6 +3,7 @@ import re
 import math
 import pandas as pd
 
+
 class DateTimeOperations:
     string_match_timedelta_dict = {
         "m": datetime.timedelta(minutes=1),
@@ -38,9 +39,10 @@ class DateTimeOperations:
                 f"in the exchange."
             )
         return datetime.timedelta(
-            seconds=(timedelta_of_string.total_seconds() * number_of_items)
+            seconds=(timedelta_of_string.total_seconds() *
+                     number_of_items)
         )
-    
+
     def map_string_to_seconds(self, time_string: str) -> float:
         """
         Maps the string to timedelta
