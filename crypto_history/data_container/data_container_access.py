@@ -506,18 +506,18 @@ class TimeAggregatedDataContainer:
         )
 
     @classmethod
-    def create_instance_from_timedeltas(cls,
-                                        exchange_factory: StockMarketFactory,
-                                        base_assets: List[str],
-                                        reference_assets: List[str],
-                                        ohlcv_fields: List[str],
-                                        time_range_timedelta_dict:
-                                        Dict[Tuple[datetime.timedelta,
-                                                   datetime.timedelta],
-                                             str],
-                                        reference_ticker: Tuple = ("ETH", "BTC"),
-                                        aggregate_coordinate_by: str = "open_ts",
-                                        ):
+    def create_instance(cls,
+                        exchange_factory: StockMarketFactory,
+                        base_assets: List[str],
+                        reference_assets: List[str],
+                        ohlcv_fields: List[str],
+                        time_range_dict:
+                        Dict[Tuple[Union[datetime.timedelta, str],
+                                   Union[datetime.timedelta, str]],
+                             str],
+                        reference_ticker: Tuple = ("ETH", "BTC"),
+                        aggregate_coordinate_by: str = "open_ts",
+                        ):
         """
         Creates the time-aggregator from time-deltas which go back from the current time
         Args:
@@ -525,7 +525,7 @@ class TimeAggregatedDataContainer:
             base_assets (List): base-asset coins 
             reference_assets (List): reference-asset coins 
             ohlcv_fields (List): ohlcv-fields to calculate 
-            time_range_timedelta_dict (Dict): dictionary of time-ranges where the keys are \
+            time_range_dict (Dict): dictionary of time-ranges where the keys are \
             tuples of timedeltas 
             reference_ticker (Tuple): reference-ticker for reference timestamps 
             aggregate_coordinate_by (str): Timestamp indexed by this value 
@@ -534,13 +534,27 @@ class TimeAggregatedDataContainer:
             TimeAggregatedDataContainer
 
         """
-        time_range_dict = {}
-        time_now = datetime.datetime.now()
-        for (time_start, time_end), candle in time_range_timedelta_dict.items():
-            datetime_start = time_now - time_start
-            datetime_end = time_now - time_end
-            time_range_dict[(datetime_start,
-                             datetime_end)] = candle
+        if all(map(
+                lambda x:isinstance(x[0], datetime.timedelta)
+                         and
+                         isinstance(x[1], datetime.timedelta),
+                time_range_dict.keys())):
+            time_now = datetime.datetime.now()
+            time_range_temp_dict = {}
+            for (time_start, time_end), candle in time_range_dict.items():
+                datetime_start = time_now - time_start
+                datetime_end = time_now - time_end
+                time_range_temp_dict[(datetime_start,
+                                      datetime_end)] = candle
+                time_range_dict = time_range_temp_dict
+        elif all(map(
+                lambda x:isinstance(x[0], str)
+                         and
+                         isinstance(x[1], str),
+                time_range_dict.keys())):
+            pass
+        else:
+            raise TypeError("Invalid time values")
         return cls(
             exchange_factory,
             base_assets=base_assets,
