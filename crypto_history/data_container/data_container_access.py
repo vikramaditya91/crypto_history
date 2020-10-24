@@ -4,10 +4,11 @@ import xarray as xr
 import numpy as np
 import pandas as pd
 import contextlib
-from typing import List, Dict, Union, Tuple
-from ..stock_market.stock_market_factory import StockMarketFactory
-from .data_container_pre import PrimitiveDataArrayOperations
-from ..utilities.exceptions import EmptyDataFrameException
+from typing import List, Dict, Union, Tuple, Type
+from crypto_history.stock_market.stock_market_factory import StockMarketFactory
+from crypto_history.data_container.data_container_pre import PrimitiveDataArrayOperations
+from crypto_history.utilities.exceptions import EmptyDataFrameException
+from crypto_history.utilities.general_utilities import TypeVarPlaceHolder
 
 logger = logging.getLogger(__name__)
 
@@ -506,7 +507,7 @@ class TimeAggregatedDataContainer:
         )
 
     @classmethod
-    def create_instance(cls,
+    def create_instance(cls: Type[TypeVarPlaceHolder],
                         exchange_factory: StockMarketFactory,
                         base_assets: List[str],
                         reference_assets: List[str],
@@ -517,7 +518,7 @@ class TimeAggregatedDataContainer:
                              str],
                         reference_ticker: Tuple = ("ETH", "BTC"),
                         aggregate_coordinate_by: str = "open_ts",
-                        ):
+                        ) -> TypeVarPlaceHolder:
         """
         Creates the time-aggregator from time-deltas which go back from the current time
         Args:

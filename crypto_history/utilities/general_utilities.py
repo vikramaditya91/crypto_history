@@ -1,7 +1,7 @@
 import logging
 import asyncio
 from datetime import datetime
-from typing import Dict
+from typing import Dict, TypeVar
 from abc import ABC
 from dataclasses import dataclass
 
@@ -218,3 +218,6 @@ def get_dataclass_from_dict(dataclass_name: str, dict_to_convert: Dict):
     )
     dataclass_decorated = dataclass(dataclass_definition)
     return dataclass_decorated(**dict_to_convert)
+
+
+TypeVarPlaceHolder = TypeVar("TypeVarPlaceHolder")
