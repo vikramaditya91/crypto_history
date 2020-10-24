@@ -1,6 +1,10 @@
 Changelog
 =========
 
+1.2b5 (2020-Oct-24)
+------------------
+ * time-range history can be created with tiemdelta
+
 1.2b4 (2020-Oct-12)
 ------------------
  * weighted data containers available
