@@ -24,12 +24,12 @@ async def main():
     time_range_timedelta_dict =\
         {(timedelta(weeks=8), timedelta(weeks=4)): "1d"}
     time_aggregated_data_container = data_container_access.\
-        TimeAggregatedDataContainer.create_instance_from_timedeltas(
+        TimeAggregatedDataContainer.create_instance(
             exchange_factory,
             base_assets=["NANO"],
             reference_assets=["BTC", "USDT"],
             ohlcv_fields=desired_fields,
-            time_range_timedelta_dict=time_range_timedelta_dict
+            time_range_dict=time_range_timedelta_dict
         )
 
     xdataarray_of_coins = await time_aggregated_data_container.get_time_aggregated_data_container()
