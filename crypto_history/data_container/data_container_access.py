@@ -4,10 +4,11 @@ import xarray as xr
 import numpy as np
 import pandas as pd
 import contextlib
-from typing import List, Dict, Union, Tuple
-from ..stock_market.stock_market_factory import StockMarketFactory
-from .data_container_pre import PrimitiveDataArrayOperations
-from ..utilities.exceptions import EmptyDataFrameException
+from typing import List, Dict, Union, Tuple, Type
+from crypto_history.stock_market.stock_market_factory import StockMarketFactory
+from crypto_history.data_container.data_container_pre import PrimitiveDataArrayOperations
+from crypto_history.utilities.exceptions import EmptyDataFrameException
+from crypto_history.utilities.general_utilities import TypeVarPlaceHolder
 
 logger = logging.getLogger(__name__)
 
@@ -481,13 +482,16 @@ class TimeStampIndexedDataContainer:
 
 
 class TimeAggregatedDataContainer:
+    """Aggregates various time-ranges into the data container"""
     def __init__(
         self,
         exchange_factory: StockMarketFactory,
         base_assets: List[str],
         reference_assets: List[str],
         ohlcv_fields: List[str],
-        time_range_dict: Dict,
+        time_range_dict: Dict[Tuple[Union[str, datetime.datetime],
+                                    Union[str, datetime.datetime]],
+                              str],
         reference_ticker: Tuple = ("ETH", "BTC"),
         aggregate_coordinate_by: str = "open_ts",
     ):
@@ -500,6 +504,66 @@ class TimeAggregatedDataContainer:
         self.aggregate_coordinate_by = aggregate_coordinate_by
         self.time_interval_splitter = (
             exchange_factory.create_time_interval_chunks()
+        )
+
+    @classmethod
+    def create_instance(cls: Type[TypeVarPlaceHolder],
+                        exchange_factory: StockMarketFactory,
+                        base_assets: List[str],
+                        reference_assets: List[str],
+                        ohlcv_fields: List[str],
+                        time_range_dict:
+                        Dict[Tuple[Union[datetime.timedelta, str],
+                                   Union[datetime.timedelta, str]],
+                             str],
+                        reference_ticker: Tuple = ("ETH", "BTC"),
+                        aggregate_coordinate_by: str = "open_ts",
+                        ) -> TypeVarPlaceHolder:
+        """
+        Creates the time-aggregator from time-deltas which go back from the current time
+        Args:
+            exchange_factory (StockMarketFactory): The exchange factory
+            base_assets (List): base-asset coins 
+            reference_assets (List): reference-asset coins 
+            ohlcv_fields (List): ohlcv-fields to calculate 
+            time_range_dict (Dict): dictionary of time-ranges where the keys are \
+            tuples of timedeltas 
+            reference_ticker (Tuple): reference-ticker for reference timestamps 
+            aggregate_coordinate_by (str): Timestamp indexed by this value 
+
+        Returns:
+            TimeAggregatedDataContainer
+
+        """
+        if all(map(
+                lambda x:isinstance(x[0], datetime.timedelta)
+                         and
+                         isinstance(x[1], datetime.timedelta),
+                time_range_dict.keys())):
+            time_now = datetime.datetime.now()
+            time_range_temp_dict = {}
+            for (time_start, time_end), candle in time_range_dict.items():
+                datetime_start = time_now - time_start
+                datetime_end = time_now - time_end
+                time_range_temp_dict[(datetime_start,
+                                      datetime_end)] = candle
+                time_range_dict = time_range_temp_dict
+        elif all(map(
+                lambda x:isinstance(x[0], str)
+                         and
+                         isinstance(x[1], str),
+                time_range_dict.keys())):
+            pass
+        else:
+            raise TypeError("Invalid time values")
+        return cls(
+            exchange_factory,
+            base_assets=base_assets,
+            reference_assets=reference_assets,
+            ohlcv_fields=ohlcv_fields,
+            time_range_dict=time_range_dict,
+            reference_ticker=reference_ticker,
+            aggregate_coordinate_by=aggregate_coordinate_by
         )
 
     def get_time_interval_chunks(self, time_range: Dict) -> List[tuple]:

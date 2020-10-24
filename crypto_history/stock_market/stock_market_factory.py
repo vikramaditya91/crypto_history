@@ -440,7 +440,7 @@ class BinanceHomogenizer(AbstractMarketHomogenizer):
 
     async def get_all_reference_assets(self) -> List:
         """Obtains the list of all reference assets"""
-        return list(set(await self.get_exchange_assets("referenceAsset")))
+        return list(set(await self.get_exchange_assets("quoteAsset")))
 
     async def get_all_raw_tickers(self) -> List:
         """Obtains the list of all raw tickers available on binance"""
@@ -657,14 +657,16 @@ class AbstractTimeIntervalChunks(ABC):
             (start_time, end_time),
             type_of_interval,
         ) in raw_time_range_dict.items():
-            sanitized_start = self.sanitize_item_to_datetime_object(start_time)
-            sanitized_end = self.sanitize_item_to_datetime_object(end_time)
+            if isinstance(start_time, str):
+                start_time = self.sanitize_item_to_datetime_object(start_time)
+            if isinstance(end_time, str):
+                end_time = self.sanitize_item_to_datetime_object(end_time)
             sanitized_kline_width = datetime_operations.\
                 map_string_to_timedelta(
                     type_of_interval
                 )
             sub_chunks = self._get_chunks_from_start_end_complete(
-                sanitized_start, sanitized_end, sanitized_kline_width
+                start_time, end_time, sanitized_kline_width
             )
             sanitized_sub_chunks = self.get_exchange_specific_sub_chunks(
                 sub_chunks
