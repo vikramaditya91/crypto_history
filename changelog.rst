@@ -1,9 +1,13 @@
 Changelog
 =========
 
+1.2b6 (2020-Oct-25)
+------------------
+ * fixed aiohttp version to 3.7.1
+
 1.2b5 (2020-Oct-24)
 ------------------
- * time-range history can be created with tiemdelta
+ * time-range history can be created with timedelta
 
 1.2b4 (2020-Oct-12)
 ------------------
