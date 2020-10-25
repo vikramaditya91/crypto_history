@@ -67,6 +67,9 @@ setup(
     ),
     extras_require=extras,
     install_requires=[
+        'service_identity',
+        'pyasn1',
+        'aiohttp==3.7.1',
         'python-binance-async',
         'xarray',
         'python-dateutil'
