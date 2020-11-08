@@ -70,6 +70,11 @@ class ConcreteJSONWriter(ConcreteAbstractDiskWriter):
 
 
 class ConcreteSQLiteWriter(ConcreteAbstractDiskWriter):
+    """Writes the fields to a SQLite database. It writes a table with
+    the name: COIN_HISTORY_{ohlcv}_{reference_asset}_{candle}.
+
+    Warnings: It will raise an error if there are multiple types of candles
+        """
     def __init__(self,
                  sqlite_db_path,
                  ):
