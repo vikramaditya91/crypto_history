@@ -72,7 +72,8 @@ setup(
         'aiohttp==3.7.1',
         'python-binance-async',
         'xarray',
-        'python-dateutil'
+        'python-dateutil',
+        'sqlalchemy'
     ],
     keywords="binance cryptocurrency xarray",
     license="Simplified BSD License",

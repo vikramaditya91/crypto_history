@@ -1,6 +1,12 @@
 Changelog
 =========
 
+
+1.2b7 (2020-Nov-09)
+------------------
+ * write to sqlite database coin history
+
+
 1.2b6 (2020-Oct-25)
 ------------------
  * fixed aiohttp version to 3.7.1

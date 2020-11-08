@@ -6,7 +6,8 @@ import pandas as pd
 import contextlib
 from typing import List, Dict, Union, Tuple, Type
 from crypto_history.stock_market.stock_market_factory import StockMarketFactory
-from crypto_history.data_container.data_container_pre import PrimitiveDataArrayOperations
+from crypto_history.data_container.data_container_pre import \
+    PrimitiveDataArrayOperations
 from crypto_history.utilities.exceptions import EmptyDataFrameException
 from crypto_history.utilities.general_utilities import TypeVarPlaceHolder
 
@@ -520,25 +521,26 @@ class TimeAggregatedDataContainer:
                         aggregate_coordinate_by: str = "open_ts",
                         ) -> TypeVarPlaceHolder:
         """
-        Creates the time-aggregator from time-deltas which go back from the current time
+        Creates the time-aggregator from time-deltas which go
+         back from the current time
         Args:
             exchange_factory (StockMarketFactory): The exchange factory
-            base_assets (List): base-asset coins 
-            reference_assets (List): reference-asset coins 
-            ohlcv_fields (List): ohlcv-fields to calculate 
-            time_range_dict (Dict): dictionary of time-ranges where the keys are \
-            tuples of timedeltas 
-            reference_ticker (Tuple): reference-ticker for reference timestamps 
-            aggregate_coordinate_by (str): Timestamp indexed by this value 
+            base_assets (List): base-asset coins
+            reference_assets (List): reference-asset coins
+            ohlcv_fields (List): ohlcv-fields to calculate
+            time_range_dict (Dict): dictionary of time-ranges where the\
+            keys are tuples of timedeltas
+            reference_ticker (Tuple): reference-ticker for reference timestamps
+            aggregate_coordinate_by (str): Timestamp indexed by this value
 
         Returns:
             TimeAggregatedDataContainer
 
         """
         if all(map(
-                lambda x:isinstance(x[0], datetime.timedelta)
-                         and
-                         isinstance(x[1], datetime.timedelta),
+                lambda x:
+                isinstance(x[0], datetime.timedelta) and
+                isinstance(x[1], datetime.timedelta),
                 time_range_dict.keys())):
             time_now = datetime.datetime.now()
             time_range_temp_dict = {}
@@ -549,10 +551,12 @@ class TimeAggregatedDataContainer:
                                       datetime_end)] = candle
                 time_range_dict = time_range_temp_dict
         elif all(map(
-                lambda x:isinstance(x[0], str)
-                         and
-                         isinstance(x[1], str),
-                time_range_dict.keys())):
+                lambda x:
+                isinstance(x[0], str) and
+                isinstance(x[1], str),
+                time_range_dict.keys()
+        )
+        ):
             pass
         else:
             raise TypeError("Invalid time values")
