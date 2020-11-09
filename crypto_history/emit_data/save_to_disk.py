@@ -123,16 +123,15 @@ class ConcreteSQLiteWriter(ConcreteAbstractDiskWriter):
             str, a string with the table of the SQL table
 
         """
-        non_nan_values = dataarray.loc[
-                         :, reference_asset, :, "weight"
-                         ].to_pandas().dropna()
-        unique_values = pd.unique(
-            non_nan_values.values.flatten()
-        ).tolist()
+        weights = dataarray.loc[
+                  :, reference_asset, :, "weight"
+                 ].values.flatten()
+        unique_values = \
+            set(filter(lambda x: isinstance(x, str), weights))
         assert len(unique_values) == 1, \
             f"More than 1 type of weights found. {unique_values}"
         return f"COIN_HISTORY_{ohlcv_field}_" \
-               f"{reference_asset}_{unique_values[0]}"
+               f"{reference_asset}_{unique_values.pop()}"
 
     def yield_db_name_from_dataset(self,
                                    dataarray: xr.DataArray,
@@ -154,6 +153,9 @@ class ConcreteSQLiteWriter(ConcreteAbstractDiskWriter):
                 df = self.get_df_from_da(dataarray,
                                          reference_asset,
                                          ohlcv_field)
+                if df.isnull().values.all():
+                    continue
+
                 table_name = self.get_sql_table_name(dataarray,
                                                      reference_asset,
                                                      ohlcv_field
