@@ -1,5 +1,7 @@
 import logging
 import asyncio
+import pathlib
+import os
 from datetime import datetime
 from typing import Dict, TypeVar
 from abc import ABC
@@ -221,3 +223,7 @@ def get_dataclass_from_dict(dataclass_name: str, dict_to_convert: Dict):
 
 
 TypeVarPlaceHolder = TypeVar("TypeVarPlaceHolder")
+
+
+def check_for_write_access(path: pathlib.Path):
+    return os.access(path, os.W_OK | os.X_OK)
