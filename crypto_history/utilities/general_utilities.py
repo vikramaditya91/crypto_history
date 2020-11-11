@@ -16,23 +16,80 @@ def init_logger(level=logging.INFO):
     logging.basicConfig(level=level, format=log_format)
 
 
+async def gather_with_concurrency(num_concurrent_tasks: int = None,
+                                  *tasks):
+    """
+    Limit the number of tasks that are gather concurrently
+    Args:
+        num_concurrent_tasks(int): Number of concurrent tasks
+        *tasks: Tasks to be gathered
+
+    Returns: result of tasks
+
+    """
+    semaphore = asyncio.Semaphore(num_concurrent_tasks)
+
+    async def sem_task(task):
+        """
+        If the num_concurrent_tasks is None, it does not \
+         throttle and returns the task. If it is not None, it \
+         throttles, the number of concurrent tasks
+        Args:
+            task: task which might have to be throttled
+
+        Returns: result of task
+
+        """
+        if num_concurrent_tasks is None:
+            return await task
+
+        async with semaphore:
+            return await task
+
+    all_tasks = (sem_task(task) for task in tasks)
+    return await asyncio.gather(*all_tasks)
+
+
 async def gather_dict(tasks: dict):
+    """
+    Gathers the tasks in a dict format (instead of typical List)
+    Args:
+        tasks(dict): Dictionary of tasks to be gathered.
+         key represents the identifier, the value is the task
+
+    Returns: Result of the tasks in a dict format where key \
+     is not modified from the tasks
+
+    """
     async def mark(key, coroutine):
         return key, await coroutine
 
+    tasks_to_send = (mark(key, coroutine)
+                     for key, coroutine in tasks.items())
+
     return {
         key: result
-        for key, result in await asyncio.gather(
-            *(mark(key, coroutine) for key, coroutine in tasks.items())
-        )
+        for key, result in await gather_with_concurrency(500,
+                                                         *tasks_to_send
+                                                         )
     }
 
 
-class TokenBucket:
+class Borg:
+    """Borg instance"""
+    _shared_state = {}
+
+    def __init__(self):
+        self.__dict__ = self._shared_state
+
+
+class TokenBucket(Borg):
     """Controls the number of requests that can be made to the API.
     All times are written in micro-seconds for a good level of accuracy"""
 
-    def __init__(self, request_limit: Dict, pause_seconds: float = 1):
+    def __init__(self,
+                 request_limit: Dict,
+                 pause_seconds: float = 1):
         """
         Initializes the TokenBucket algorithm to throttle the flow of requests
 
@@ -42,16 +99,18 @@ class TokenBucket:
              number of maximum requests allowed
             pause_seconds: amount of seconds to pause and test again
         """
-        self.queue = asyncio.Queue()
-        (
-            self.bucket_list,
-            self.delta_t_list,
-            self.max_requests_list,
-        ) = self._initialize_buckets(request_limit)
-        self.last_check = datetime.now()
-        self.pause_seconds = pause_seconds
-        self.results = []
-        self._counter = 0
+        super().__init__()
+        if not self._shared_state:
+            self.queue = asyncio.Queue()
+            (
+                self.bucket_list,
+                self.delta_t_list,
+                self.max_requests_list,
+            ) = self._initialize_buckets(request_limit)
+            self.last_check = datetime.now()
+            self.pause_seconds = pause_seconds
+            self.results = []
+            self._counter = 0
 
     @staticmethod
     def _initialize_buckets(requests_dict: Dict):

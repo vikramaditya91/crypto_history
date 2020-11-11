@@ -6,9 +6,6 @@ Welcome to crypto-history
 .. image:: https://img.shields.io/pypi/v/crypto-history.svg
     :target: https://pypi.python.org/pypi/crypto-history
 
-.. image:: https://img.shields.io/pypi/l/crypto-history.svg
-    :target: https://pypi.python.org/pypi/crypto-history
-
 .. image:: https://img.shields.io/pypi/wheel/crypto-history.svg
     :target: https://pypi.python.org/pypi/crypto-history
 
@@ -27,9 +24,12 @@ Welcome to crypto-history
     :target: https://coveralls.io/github/vikramaditya91/crypto_history?branch=master
     :alt: crypto-history coveralls coverage
 
+.. image:: https://travis-ci.org/vikramaditya91/crypto_history.svg?branch=master
+    :target: https://travis-ci.org/vikramaditya91/crypto_history
+
 
 This is a wrapper on binance and other exchange APIs to aggregate historical information
-in structured tabular formats (such as xarray.DataArray)
+in structured tabular formats (such as xarray.DataArray and SQLite).
 
 Source code
   https://github.com/vikramaditya91/crypto_history
@@ -50,6 +50,9 @@ Features
 - Obtains the history of each/all tickers in the xarray.DataArray format
 - Easily extendable to other exchanges and other data formats
 - It does not require an API key from Binance
+- null values can be dropped either timestamp-wise and/or coin-wise
+- Can export data in SQLite format and xr.DataArray
+- Chunks of time can be aggregated into a single data object
 
 Quick Start
 -----------

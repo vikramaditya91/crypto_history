@@ -1,5 +1,6 @@
 from __future__ import annotations
 import pathlib
+import logging
 from sqlalchemy.orm import sessionmaker
 import xarray as xr
 import pandas as pd
@@ -8,6 +9,8 @@ from abc import ABC, abstractmethod
 from sqlalchemy import create_engine
 from crypto_history.utilities.general_utilities import register_factory
 from crypto_history.utilities.general_utilities import check_for_write_access
+
+logger = logging.getLogger(__package__)
 
 
 class AbstractDiskWriteCreator(ABC):
@@ -123,16 +126,15 @@ class ConcreteSQLiteWriter(ConcreteAbstractDiskWriter):
             str, a string with the table of the SQL table
 
         """
-        non_nan_values = dataarray.loc[
-                         :, reference_asset, :, "weight"
-                         ].to_pandas().dropna()
-        unique_values = pd.unique(
-            non_nan_values.values.flatten()
-        ).tolist()
+        weights = dataarray.loc[
+                  :, reference_asset, :, "weight"
+                 ].values.flatten()
+        unique_values = \
+            set(filter(lambda x: isinstance(x, str), weights))
         assert len(unique_values) == 1, \
             f"More than 1 type of weights found. {unique_values}"
         return f"COIN_HISTORY_{ohlcv_field}_" \
-               f"{reference_asset}_{unique_values[0]}"
+               f"{reference_asset}_{unique_values.pop()}"
 
     def yield_db_name_from_dataset(self,
                                    dataarray: xr.DataArray,
@@ -154,6 +156,12 @@ class ConcreteSQLiteWriter(ConcreteAbstractDiskWriter):
                 df = self.get_df_from_da(dataarray,
                                          reference_asset,
                                          ohlcv_field)
+                if df.isnull().values.all():
+                    logger.warning(f"All the values in the df of {ohlcv_field}"
+                                   f" for reference_asset {reference_asset} "
+                                   f"are null")
+                    continue
+
                 table_name = self.get_sql_table_name(dataarray,
                                                      reference_asset,
                                                      ohlcv_field
