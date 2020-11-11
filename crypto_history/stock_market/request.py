@@ -154,17 +154,17 @@ class BinanceRequester(AbstractMarketRequester):
         except exceptions.BinanceAPIException as e:
             # Error code corresponds to TOO_MANY_REQUESTS in Binance
             if e.code == -1003:
+                wait_seconds = 5
                 logger.warning(
                     f"Request could not respond as TOO_MANY_REQUESTS. "
-                    f"SYNCHRONOUSLY pausing everything for 30 seconds. "
+                    f"SYNCHRONOUSLY pausing everything for {wait_seconds} seconds. "
                     f"Reason {e}"
                 )
-                time.sleep(5)
+                time.sleep(wait_seconds)
                 logger.warning(
                     "Updating the Binance Session as it often gets stuck "
                     "without it"
                 )
-                self._client = AsyncClient(api_key="", api_secret="")
 
                 return await self._retry(
                     method_name, retry_strategy_state, *args, **kwargs

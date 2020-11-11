@@ -1,5 +1,6 @@
 from __future__ import annotations
 import pathlib
+import logging
 from sqlalchemy.orm import sessionmaker
 import xarray as xr
 import pandas as pd
@@ -8,6 +9,8 @@ from abc import ABC, abstractmethod
 from sqlalchemy import create_engine
 from crypto_history.utilities.general_utilities import register_factory
 from crypto_history.utilities.general_utilities import check_for_write_access
+
+logger = logging.getLogger(__package__)
 
 
 class AbstractDiskWriteCreator(ABC):
@@ -154,6 +157,9 @@ class ConcreteSQLiteWriter(ConcreteAbstractDiskWriter):
                                          reference_asset,
                                          ohlcv_field)
                 if df.isnull().values.all():
+                    logger.warning(f"All the values in the df of {ohlcv_field}"
+                                   f" for reference_asset {reference_asset} "
+                                   f"are null")
                     continue
 
                 table_name = self.get_sql_table_name(dataarray,

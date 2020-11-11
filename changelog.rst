@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.2b9 (2020-Nov-09)
+1.2b9 (2020-Nov-11)
 -------------------
  * bugfix/write SQL even with incomplete data
 

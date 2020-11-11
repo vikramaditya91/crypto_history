@@ -2,6 +2,7 @@ import asyncio
 from crypto_history import class_builders, init_logger,\
     save_to_disk, data_container_post, data_container_access
 import logging
+import tempfile
 
 
 async def main():
@@ -27,11 +28,11 @@ async def main():
     type_converted_dataarray = type_converter.set_type_on_dataarray(xdataarray_of_coins)
 
     sql_writer = class_builders.get("write_to_disk").get("sqlite")()
-    save_to_disk.write_coin_history_to_file(type_converted_dataarray,
-                                            sql_writer,
-                                            f"/home/vikramaditya/PycharmProjects/database/"
-                                            f"25_Jan_2016_TO_9_Nov_2020_BTC_{candle_type}.db",
-                                            ["open", "close"])
+    with tempfile.NamedTemporaryFile(suffix=".db") as temp_db:
+        save_to_disk.write_coin_history_to_file(type_converted_dataarray,
+                                                sql_writer,
+                                                temp_db.name,
+                                                ["open", "close"])
 
 
 if __name__ == "__main__":
