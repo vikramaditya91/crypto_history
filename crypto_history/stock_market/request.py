@@ -128,7 +128,7 @@ class BinanceRequester(AbstractMarketRequester):
         super().__init__()
         self._client = AsyncClient(api_key="", api_secret="")
         self.request_queue = TokenBucket(
-            request_limit={timedelta(minutes=1): 600}
+            request_limit={timedelta(minutes=1): 400}
         )
 
     async def _request_with_retries(
@@ -159,8 +159,7 @@ class BinanceRequester(AbstractMarketRequester):
                     f"SYNCHRONOUSLY pausing everything for 30 seconds. "
                     f"Reason {e}"
                 )
-
-                time.sleep(1)
+                time.sleep(5)
                 logger.warning(
                     "Updating the Binance Session as it often gets stuck "
                     "without it"

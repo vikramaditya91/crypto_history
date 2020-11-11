@@ -14,7 +14,7 @@ async def main():
         base_assets = await binance_homogenizer.get_all_base_assets()
 
     desired_fields = ["open_ts", "open", "close"]
-    candle_type = "1h"
+    candle_type = "1m"
     time_aggregated_data_container = data_container_access.TimeAggregatedDataContainer.create_instance(
         exchange_factory,
         base_assets=base_assets,
