@@ -154,7 +154,7 @@ class BinanceRequester(AbstractMarketRequester):
         except exceptions.BinanceAPIException as e:
             # Error code corresponds to TOO_MANY_REQUESTS in Binance
             if e.code == -1003:
-                wait_seconds = 5
+                wait_seconds = 2
                 logger.warning(
                     f"Request could not respond as TOO_MANY_REQUESTS. "
                     f"SYNCHRONOUSLY pausing everything for {wait_seconds} seconds. "

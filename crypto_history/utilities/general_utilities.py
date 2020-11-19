@@ -169,10 +169,10 @@ class TokenBucket(Borg):
             if self.bucket_list[it] > self.max_requests_list[it]:
                 self.bucket_list[it] = self.max_requests_list[it]
             if self.bucket_list[it] < 1:
-                logger.debug(
-                    "Requests have exceeded. Waiting for token"
-                    " bucket to fill-up"
-                )
+                # logger.debug(
+                #     "Requests have exceeded. Waiting for token"
+                #     " bucket to fill-up"
+                # )
                 await asyncio.sleep(self.pause_seconds)
                 if await self._check_if_within_limits() is True:
                     continue
