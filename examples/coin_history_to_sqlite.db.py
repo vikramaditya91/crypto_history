@@ -15,22 +15,23 @@ async def main():
         base_assets = await binance_homogenizer.get_all_base_assets()
 
     desired_fields = ["open_ts", "open", "close"]
-    candle_type = "15m"
+    candle_type = "1h"
     time_aggregated_data_container = data_container_access.TimeAggregatedDataContainer.create_instance(
         exchange_factory,
         base_assets=base_assets,
         reference_assets=["BTC"],
         ohlcv_fields=desired_fields,
-        time_range_dict={("25 Jan 2015", "18 Nov 2020"): candle_type}
+        time_range_dict={("25 Jan 2017", "18 Nov 2020"): candle_type}
     )
     xdataarray_of_coins = await time_aggregated_data_container.get_time_aggregated_data_container()
     type_converter = data_container_post.TypeConvertedData(exchange_factory)
     type_converted_dataarray = type_converter.set_type_on_dataarray(xdataarray_of_coins)
 
     sql_writer = class_builders.get("write_to_disk").get("sqlite")()
+
     save_to_disk.write_coin_history_to_file(type_converted_dataarray,
                                             sql_writer,
-                                            "/home/vikramaditya/1d.db",
+                                            f"/home/vikramaditya/PycharmProjects/database/25_Jan_2017_TO_18_Nov_2020_BTC_{candle_type}1h.db",
                                             ["open", "close"])
 
 

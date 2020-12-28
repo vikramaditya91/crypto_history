@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import time
+import aiohttp
 from binance import exceptions
 from binance.client import AsyncClient
 from abc import ABC
@@ -170,6 +171,13 @@ class BinanceRequester(AbstractMarketRequester):
                     method_name, retry_strategy_state, *args, **kwargs
                 )
             raise
+        except aiohttp.ClientConnectorError as e:
+            logger.warning(f"Request returned {e}."
+                           f" Waiting 10 seconds before proceeding")
+            time.sleep(10)
+            return await self._retry(
+                method_name, retry_strategy_state, *args, **kwargs
+            )
 
 
 class SomeOtherExchangeRequester(AbstractMarketRequester):
