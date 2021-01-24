@@ -70,6 +70,8 @@ setup(
     install_requires=[
         'service_identity',
         'pyasn1',
+        'regex',
+        'tzlocal',
         'aiohttp==3.7.1',
         'python-binance-async',
         'xarray',

@@ -2,10 +2,13 @@ import logging
 import asyncio
 import pathlib
 import os
+import contextlib
 from datetime import datetime
 from typing import Dict, TypeVar
 from abc import ABC
 from dataclasses import dataclass
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 
 logger = logging.getLogger(__name__)
@@ -286,3 +289,37 @@ TypeVarPlaceHolder = TypeVar("TypeVarPlaceHolder")
 
 def check_for_write_access(path: pathlib.Path):
     return os.access(path, os.W_OK | os.X_OK)
+
+
+def create_dir_if_does_not_exist(path: pathlib.Path):
+    if path.exists() is False:
+        path.mkdir(parents=True)
+    if check_for_write_access(path) is False:
+        raise PermissionError(f"No permissions to write in {path}")
+    if path.is_dir() is False:
+        raise PermissionError(f"{path} already existed and is not a directory")
+
+
+@contextlib.contextmanager
+def context_manage_sqlite(
+                          file_path,
+                          ):
+    """
+    Creates a context manager for the DB
+    Args:
+        file_path: file path to which the sqlite should open to
+
+    Yields:
+        the sqlite engine
+    """
+    engine = create_engine(
+        f'sqlite:///{file_path}',
+        echo=True
+    )
+    session = sessionmaker(bind=engine)()
+    try:
+        yield engine
+        session.commit()
+
+    finally:
+        session.close()

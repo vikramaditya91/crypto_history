@@ -14,11 +14,14 @@ logger = logging.getLogger(__name__)
 
 class AbstractMarketRequester(ABC):
     """AbstractBaseClass for the low-level market requester"""
+    _shared_state = {}
 
     def __init__(self):
-        self._client = None
-        self.retry_strategy_class = RetryModel
-        self.request_queue = None
+        self.__dict__ = self._shared_state
+        if self._shared_state == {}:
+            self._client = None
+            self.retry_strategy_class = RetryModel
+            self.request_queue = None
 
     async def __aenter__(self):
         return self

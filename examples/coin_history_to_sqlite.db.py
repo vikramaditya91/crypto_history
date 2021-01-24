@@ -1,8 +1,9 @@
 import asyncio
-from crypto_history import class_builders, init_logger,\
-    save_to_disk, data_container_post, data_container_access
 import logging
-import tempfile
+import pathlib
+
+from crypto_history import class_builders, init_logger, \
+    save_to_disk, data_container_post, data_container_access
 
 
 async def main():
@@ -16,23 +17,27 @@ async def main():
 
     desired_fields = ["open_ts", "open", "close"]
     candle_type = "1h"
+
     time_aggregated_data_container = data_container_access.TimeAggregatedDataContainer.create_instance(
         exchange_factory,
         base_assets=base_assets,
         reference_assets=["BTC"],
         ohlcv_fields=desired_fields,
-        time_range_dict={("25 Jan 2017", "18 Nov 2020"): candle_type}
+        time_range_dict={("25 Jan 2018", "25 Jan 2021"): candle_type}
     )
-    xdataarray_of_coins = await time_aggregated_data_container.get_time_aggregated_data_container()
     type_converter = data_container_post.TypeConvertedData(exchange_factory)
-    type_converted_dataarray = type_converter.set_type_on_dataarray(xdataarray_of_coins)
+    type_conversion = type_converter.set_type_on_dataarray
 
-    sql_writer = class_builders.get("write_to_disk").get("sqlite")()
+    sql_writer = class_builders.get("write_to_disk").get("sqlite_pieces")()
 
-    save_to_disk.write_coin_history_to_file(type_converted_dataarray,
-                                            sql_writer,
-                                            f"/home/vikramaditya/PycharmProjects/database/25_Jan_2017_TO_18_Nov_2020_BTC_{candle_type}1h.db",
-                                            ["open", "close"])
+    output_path = pathlib.Path(pathlib.Path(__file__).resolve()).parents[3] / \
+                  "common_db" / f"25_Jan_2018_TO_18_Nov_2021_BTC_{candle_type}_directory"
+
+    await save_to_disk.write_coin_history_to_file(sql_writer,
+                                                  time_aggregated_data_container,
+                                                  output_path=output_path,
+                                                  operations={"post": [type_conversion],
+                                                              "fields": ["open", "close"]})
 
 
 if __name__ == "__main__":
