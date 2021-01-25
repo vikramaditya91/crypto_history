@@ -215,6 +215,9 @@ class ConcreteSQLiteWriter(ConcreteAbstractDiskWriter):
 
 
 class ConcreteSQLitePiecesWriter(ConcreteSQLiteWriter):
+    """
+    Repeats the obtain coin history chunk, store chunk in DB repeatedly
+    """
     def __init__(self,
                  sqlite_dir_path: pathlib.Path):
         self.sqlite_dir_path = sqlite_dir_path
@@ -263,7 +266,6 @@ class ConcreteSQLitePiecesWriter(ConcreteSQLiteWriter):
 
     async def write_coin_history_dataset_to_disk(self,
                                                  da_generator,
-
                                                  operations: Dict[str]):
         """
         Writes the coin history dataset to the disk

@@ -1,6 +1,10 @@
 Changelog
 =========
 
+1.2b10 (2021-Jan-25)
+-------------------
+ * feature/piece-wise data write in SQLite
+
 1.2b9 (2020-Nov-11)
 -------------------
  * bugfix/write SQL even with incomplete data
