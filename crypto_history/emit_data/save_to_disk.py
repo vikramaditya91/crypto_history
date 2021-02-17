@@ -291,6 +291,9 @@ class ConcreteSQLitePiecesWriter(ConcreteSQLiteWriter):
                     chunk_history = await self.get_chunked_history(da_generator,
                                                                    operations["post"],
                                                                    time_range)
+                    if chunk_history.shape[2] == 0:
+                        pathlib.Path(file_path).touch()
+                        continue
                     with context_manage_sqlite(file_path) as engine:
                         for df, name in self.yield_db_name_from_dataset(chunk_history,
                                                                         operations["fields"]):
