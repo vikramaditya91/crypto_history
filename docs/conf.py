@@ -1,18 +1,23 @@
-import sys
+import re
 from os import path as op
 
-sys.path.insert(0, op.join(op.dirname(__file__), ".."))
-from crypto_history.version import __version__
-# from crypto_history.utilities.general_utilities import register_factory1
+with open(op.join(op.dirname(op.dirname(__file__)), "pyproject.toml"), "r") as poetry_file:
+    for line in poetry_file.readlines():
+        try:
+            version = re.search(r"version\s*\t*=\s*\t*['\"](.*?)['\"]", line).groups()[0]
+            break
+        except AttributeError:
+            pass
+
 
 # -- Project information -----------------------------------------------------
 
 project = 'crypto_history'
-copyright = '2020, Vikramaditya Gaonkar'
+copyright = '2021, Vikramaditya Gaonkar'
 author = 'Vikramaditya Gaonkar'
 
 # The full version, including alpha/beta/rc tags
-release = str(__version__)
+release = str(version)
 
 
 def no_namedtuple_attrib_docstring(app, what, name,
