@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "crypto_history"
+version = "1.2.b10"
+description = "crypto_history is a python package for extracting history of crypto-currencies from various exchanges and presenting them in a tabular data-format"
+authors = ["Vikramaditya Gaonkar <vikramaditya91@gmail.com>"]
+license = "GNU GPL"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+xarray = "^0.17.0"
+python-binance-async = "^0.7.4-beta.0"
+SQLAlchemy = "^1.4.5"
+
+
+[tool.poetry.dev-dependencies]
+tox = "^3.23.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
