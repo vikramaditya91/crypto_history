@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "crypto_history"
-version = "1.2.b11"
+version = "1.2.b12"
 description = "crypto_history is a python package for extracting history of crypto-currencies from various exchanges and presenting them in a tabular data-format"
 authors = ["Vikramaditya Gaonkar <vikramaditya91@gmail.com>"]
 license = "GNU GPL"

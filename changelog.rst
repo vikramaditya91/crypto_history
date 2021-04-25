@@ -1,6 +1,10 @@
 Changelog
 =========
 
+1.2b12 (2021-Apr-25)
+--------------------
+ * bugfix/refix issue #20 vectorize empty numpy array
+
 1.2b11 (2021-Apr-25)
 -------------------
  * bugfix/fixes issue #20 vectorize with empty numpy array
