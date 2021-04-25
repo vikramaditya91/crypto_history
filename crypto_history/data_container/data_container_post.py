@@ -196,7 +196,10 @@ class ApplyWeightToDataArray:
         """
         date_time_operator = datetime_operations.DateTimeOperations()
         string_to_seconds = date_time_operator.map_string_to_seconds
-        return np.vectorize(string_to_seconds)(numpy_array)
+        return np.array(
+            list(
+                map(lambda x: np.vectorize(string_to_seconds)(x), numpy_array))
+        )
 
     @staticmethod
     def correct_shaped_np_array(numpy_array: np.ndarray,

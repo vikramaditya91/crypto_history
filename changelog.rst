@@ -1,6 +1,14 @@
 Changelog
 =========
 
+1.2b11 (2021-Apr-25)
+-------------------
+ * bugfix/fixes issue #20 vectorize with empty numpy array
+
+1.2b10 (2021-Apr-5)
+-------------------
+ * feature/change build package to poetry
+
 1.2b9 (2020-Nov-11)
 -------------------
  * bugfix/write SQL even with incomplete data
