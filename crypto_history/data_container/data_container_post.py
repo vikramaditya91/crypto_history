@@ -199,6 +199,8 @@ class ApplyWeightToDataArray:
         """
         date_time_operator = datetime_operations.DateTimeOperations()
         string_to_seconds = date_time_operator.map_string_to_seconds
+        if 0 in numpy_array.shape:
+            return numpy_array
         return np.vectorize(string_to_seconds)(numpy_array)
 
     @staticmethod
