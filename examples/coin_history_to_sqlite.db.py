@@ -30,8 +30,9 @@ async def main():
 
     sql_writer = class_builders.get("write_to_disk").get("sqlite_pieces")()
 
-    output_path = pathlib.Path(pathlib.Path(__file__).resolve()).parents[3] / \
-                  "common_db" / f"25_Jan_2018_TO_18_Nov_2021_BTC_{candle_type}_directory"
+    output_path = pathlib.Path(pathlib.Path(__file__).resolve()).parents[4] / \
+                  "s3_sync" / \
+                  f"25_Jan_2018_TO_18_Nov_2021_BTC_{candle_type}_directory"
 
     await save_to_disk.write_coin_history_to_file(sql_writer,
                                                   time_aggregated_data_container,
