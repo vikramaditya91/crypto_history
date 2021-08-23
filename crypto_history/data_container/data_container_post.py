@@ -1,10 +1,12 @@
-import logging
 import itertools
-import xarray as xr
-import pandas as pd
-import numpy as np
-from typing import Union, Dict
+import logging
 from collections import OrderedDict
+from typing import Union, Dict
+
+import numpy as np
+import pandas as pd
+import xarray as xr
+
 from crypto_history.stock_market.stock_market_factory import StockMarketFactory
 from crypto_history.utilities import datetime_operations
 
@@ -86,6 +88,7 @@ class HandleIncompleteData:
     1. If a certain coin has to be dropped if it is null
     2. If a ticker has to be nulliifed as it has incomplete data
     """
+
     def __init__(self, coordinates_to_drop=None):
         """Initializes the incomplete data. The iterations on the
          coordinates are set with coordinates to drop"""
@@ -94,7 +97,7 @@ class HandleIncompleteData:
         self.coordinates_to_drop = coordinates_to_drop
 
     def drop_xarray_coins_with_entire_na(
-        self, data_item: Union[xr.DataArray, xr.Dataset]
+            self, data_item: Union[xr.DataArray, xr.Dataset]
     ) -> Union[xr.DataArray, xr.Dataset]:
         """
         Drops the coins from the base/reference asset if all \
@@ -140,7 +143,7 @@ class HandleIncompleteData:
             yield dict(zip(keys, combination))
 
     def nullify_incomplete_data_from_dataarray(
-        self, dataarray: xr.DataArray
+            self, dataarray: xr.DataArray
     ) -> xr.DataArray:
         """
         Nullifies incomplete data from the xr.DataArray
@@ -159,7 +162,7 @@ class HandleIncompleteData:
         return dataarray
 
     def nullify_incomplete_data_from_dataset(
-        self, dataset: xr.Dataset
+            self, dataset: xr.Dataset
     ) -> xr.Dataset:
         """
         Nullifies the incomplete data of datasets

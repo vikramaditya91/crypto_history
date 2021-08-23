@@ -71,10 +71,20 @@ class DataFrameOperations:
         history_df = pd.DataFrame(ticker_history)
         if history_df.empty:
             raise exceptions.EmptyDataFrameException
+        history_df = self.remove_extra_indices(history_df,
+                                               standard_example)
         padded_df = await self.pad_extra_rows_if_necessary(
             standard_example, history_df
         )
         return padded_df
+
+    @staticmethod
+    def remove_extra_indices(history_df: pd.DataFrame,
+                             standard_example: List):
+        indices_to_drop = history_df.shape[0] - standard_example.__len__()
+        if indices_to_drop > 0:
+            history_df.drop(history_df.tail(indices_to_drop).index, inplace=True)
+        return history_df
 
     @staticmethod
     def add_extra_rows_to_bottom(df: pd.DataFrame, empty_rows_to_add: int):

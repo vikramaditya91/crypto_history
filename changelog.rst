@@ -1,6 +1,10 @@
 Changelog
 =========
 
+1.2b13 (2021-May-24)
+-------------------
+ * feature/piece-wise data write in SQLite
+
 1.2b12 (2021-Apr-25)
 --------------------
  * bugfix/refix issue #20 vectorize empty numpy array

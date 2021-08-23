@@ -1,50 +1,53 @@
 from __future__ import annotations
-import pathlib
+
+import datetime
 import logging
-from sqlalchemy.orm import sessionmaker
-import xarray as xr
-import pandas as pd
-from typing import Union, List
+import pathlib
 from abc import ABC, abstractmethod
-from sqlalchemy import create_engine
-from crypto_history.utilities.general_utilities import register_factory
-from crypto_history.utilities.general_utilities import check_for_write_access
+from typing import Union, List, Dict, Tuple
+
+import pandas as pd
+import xarray as xr
+
+from crypto_history.utilities.general_utilities import check_for_write_access, \
+    create_dir_if_does_not_exist, register_factory, context_manage_sqlite
 
 logger = logging.getLogger(__package__)
 
 
 class AbstractDiskWriteCreator(ABC):
     """Abstract disk-writer creator"""
+
     @abstractmethod
     def factory_method(self, *args, **kwargs):
         """factory method to create the disk-writer"""
         pass
 
-    def save_coin_history_to_file(self,
-                                  dataarray: xr.DataArray,
-                                  file_location: Union[
-                                      pathlib.Path, str
-                                  ],
-                                  ohlcv_to_deposit):
+    async def save_coin_history_to_file(self,
+                                        data_container_generator,
+                                        output_path: Union[
+                                            pathlib.Path, str
+                                        ],
+                                        operations):
         """
         Save coin history to file
         Args:
-            dataarray: xr.DataArray, dataarray which needs to be \
-             written to the file
-            file_location: path to the filw where it should be written
-            ohlcv_to_deposit: list of ohlcv_fields to be deposited
+            data_container_generator: xr.DataArray generator
+            output_path: path to the filw where it should be written
+            operations: list of operations to perform before depositing
 
         Returns:
 
         """
-        product = self.factory_method(file_location)
-        product.write_coin_history_dataset_to_disk(dataarray,
-                                                   ohlcv_to_deposit)
+        product = self.factory_method(output_path)
+        await product.write_coin_history_dataset_to_disk(data_container_generator,
+                                                         operations)
 
 
 @register_factory(section="write_to_disk", identifier="json")
 class JSONCreator(AbstractDiskWriteCreator):
     """JSON creator"""
+
     def factory_method(self, *args, **kwargs) -> ConcreteAbstractDiskWriter:
         return ConcreteJSONWriter(*args, **kwargs)
 
@@ -52,15 +55,30 @@ class JSONCreator(AbstractDiskWriteCreator):
 @register_factory(section="write_to_disk", identifier="sqlite")
 class SQLiteCreator(AbstractDiskWriteCreator):
     """SQLite creator"""
+
     def factory_method(self, *args, **kwargs) -> ConcreteAbstractDiskWriter:
         return ConcreteSQLiteWriter(*args, **kwargs)
 
 
+@register_factory(section="write_to_disk", identifier="sqlite_pieces")
+class SQLitePiecesCreator(AbstractDiskWriteCreator):
+    def factory_method(self, *args, **kwargs):
+        return ConcreteSQLitePiecesWriter(*args, **kwargs)
+
+
 class ConcreteAbstractDiskWriter(ABC):
     """Concrete abstract disk writer"""
+
     @abstractmethod
     def write_coin_history_dataset_to_disk(self, *args, **kwargs):
         pass
+
+    @staticmethod
+    def apply_post_operations(da: xr.DataArray,
+                              post_ops: List):
+        for item in post_ops:
+            da = item(da)
+        return da
 
 
 class ConcreteJSONWriter(ConcreteAbstractDiskWriter):
@@ -77,14 +95,11 @@ class ConcreteSQLiteWriter(ConcreteAbstractDiskWriter):
 
     Warnings: It will raise an error if there are multiple types of candles
     """
+
     def __init__(self,
                  sqlite_db_path,
                  ):
         self.sqlite_db_path = sqlite_db_path
-        self.engine = create_engine(
-            f'sqlite:///{self.sqlite_db_path}',
-            echo=True
-        )
 
     @staticmethod
     def get_df_from_da(dataarray: xr.DataArray,
@@ -128,7 +143,7 @@ class ConcreteSQLiteWriter(ConcreteAbstractDiskWriter):
         """
         weights = dataarray.loc[
                   :, reference_asset, :, "weight"
-                 ].values.flatten()
+                  ].values.flatten()
         unique_values = \
             set(filter(lambda x: isinstance(x, str), weights))
         assert len(unique_values) == 1, \
@@ -168,54 +183,145 @@ class ConcreteSQLiteWriter(ConcreteAbstractDiskWriter):
                                                      )
                 yield df, table_name
 
-    def write_coin_history_dataset_to_disk(self,
-                                           dataarray: xr.DataArray,
-                                           ohlcv_to_deposit: List[str]):
+    async def write_coin_history_dataset_to_disk(self,
+                                                 da_generator,
+                                                 operations: Dict[str]):
         """
         Writes the coin history to SQLite DB
 
         Args:
-            dataarray: xr.DataArray which is going to be written in \
+            da_generator: xr.DataArray to await which is going to be written in \
             the SQL DB
-            ohlcv_to_deposit: types of ohlcv fields to deposit
+            operations: types of ohlcv fields to deposit
 
         """
-        if "weight" in ohlcv_to_deposit:
+        if "weight" in operations["fields"]:
             raise ValueError("weight not expected in ohlcv_to_deposit")
 
         if check_for_write_access(
                 pathlib.Path(self.sqlite_db_path).parent
         ) is True:
-            session = sessionmaker(bind=self.engine)()
+            dataarray = await da_generator.get_time_aggregated_data_container()
+            dataarray = self.apply_post_operations(dataarray,
+                                                   operations["post"])
+
             for df, name in self.yield_db_name_from_dataset(dataarray,
-                                                            ohlcv_to_deposit):
-                try:
-                    df.to_sql(name, self.engine)
-                    session.commit()
-                finally:
-                    session.close()
+                                                            operations["fields"]):
+                with context_manage_sqlite(self.sqlite_db_path) as engine:
+                    df.to_sql(name, engine)
         else:
             raise PermissionError(f"Do not have permissions to "
                                   f"write in {self.sqlite_db_path}")
 
 
-def write_coin_history_to_file(dataarray: xr.DataArray,
-                               creator: AbstractDiskWriteCreator,
-                               file_location: Union[pathlib.Path, str],
-                               *args, **kwargs):
+class ConcreteSQLitePiecesWriter(ConcreteSQLiteWriter):
+    """
+    Repeats the obtain coin history chunk, store chunk in DB repeatedly
+    """
+    def __init__(self,
+                 sqlite_dir_path: pathlib.Path):
+        self.sqlite_dir_path = sqlite_dir_path
+        create_dir_if_does_not_exist(sqlite_dir_path)
+
+    def get_db_path_name(self,
+                         time_intervals) -> pathlib.Path:
+        """
+        Gets the path to the piece of the DB
+        Args:
+            time_intervals: tuple of start, end times and the type of interval
+
+        Returns:
+            path to the pieced DB
+        """
+        (start_time, end_time), interval = time_intervals
+        start = datetime.datetime.fromtimestamp(start_time / 1000)
+        end = datetime.datetime.fromtimestamp(end_time / 1000)
+        file_name = f'{interval}__' \
+                    f'{start.strftime("%d-%m-%Y_%H-%M-%S")}__' \
+                    f'{end.strftime("%d-%m-%Y_%H-%M-%S")}.db'
+        return pathlib.Path(self.sqlite_dir_path / file_name)
+
+    async def get_chunked_history(self,
+                                  da_generator,
+                                  post: List,
+                                  time_intervals: Tuple):
+        """
+        Gets the history to be inserted in each DB piece
+        Args:
+            da_generator: The xr.DataArray generator
+            post: post operations needed to be be performed on the da
+            time_intervals: tuple of start, end times and the interval type
+
+        Returns:
+            da of the chunk of history for that interval
+
+        """
+        (start_time, end_time), interval = time_intervals
+        chunk_history = await da_generator.get_chunk_history(
+            interval, start_time, end_time
+        )
+        chunk_history = self.apply_post_operations(chunk_history,
+                                                   post)
+        return chunk_history
+
+    async def write_coin_history_dataset_to_disk(self,
+                                                 da_generator,
+                                                 operations: Dict[str]):
+        """
+        Writes the coin history dataset to the disk
+        Args:
+            da_generator: da generator to write to disk
+            operations: dictionary of op
+
+        Returns:
+
+        """
+        if "weight" in operations["fields"]:
+            raise ValueError("weight not expected in ohlcv_to_deposit")
+
+        if check_for_write_access(
+                pathlib.Path(self.sqlite_dir_path)
+        ) is True:
+            chunks_of_time = da_generator.get_time_interval_chunks(
+                da_generator.time_range_dict
+            )
+            for time_range in chunks_of_time:
+                file_path = self.get_db_path_name(time_range)
+                if not file_path.exists():
+                    chunk_history = await self.get_chunked_history(da_generator,
+                                                                   operations["post"],
+                                                                   time_range)
+                    if chunk_history.shape[2] == 0:
+                        pathlib.Path(file_path).touch()
+                        continue
+                    with context_manage_sqlite(file_path) as engine:
+                        for df, name in self.yield_db_name_from_dataset(chunk_history,
+                                                                        operations["fields"]):
+                            df.to_sql(name, engine)
+                else:
+                    logger.info(f"{file_path} exists. Skipping time-intervals")
+        else:
+            raise PermissionError(f"Do not have permissions to "
+                                  f"write in {self.sqlite_dir_path}")
+
+
+async def write_coin_history_to_file(creator: AbstractDiskWriteCreator,
+                                     data_container_instance,
+                                     output_path: Union[pathlib.Path, str],
+                                     *args, **kwargs):
     """
     Writes the coin history to file
     Args:
-        dataarray: xr.DataArray, dataset of the coin history
+        data_container_instance: xr.DataArray generator
         creator: AbstractDiskWriteCreator, The creator for the \
          disk-writer class
-        file_location: location of the file where it should be written
+        output_path: location of the file where it should be written
         *args: arguments to be passed to the creator
         **kwargs: keyword-arguments passed to the creator
 
     """
-    if check_for_write_access(pathlib.Path(file_location).parent) is True:
-        creator.save_coin_history_to_file(dataarray,
-                                          file_location,
-                                          *args,
-                                          **kwargs)
+    if check_for_write_access(pathlib.Path(output_path).parent) is True:
+        await creator.save_coin_history_to_file(data_container_instance,
+                                                output_path,
+                                                *args,
+                                                **kwargs)

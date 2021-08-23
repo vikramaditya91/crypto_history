@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import time
+import aiohttp
 from binance import exceptions
 from binance.client import AsyncClient
 from abc import ABC
@@ -13,11 +14,14 @@ logger = logging.getLogger(__name__)
 
 class AbstractMarketRequester(ABC):
     """AbstractBaseClass for the low-level market requester"""
+    _shared_state = {}
 
     def __init__(self):
-        self._client = None
-        self.retry_strategy_class = RetryModel
-        self.request_queue = None
+        self.__dict__ = self._shared_state
+        if self._shared_state == {}:
+            self._client = None
+            self.retry_strategy_class = RetryModel
+            self.request_queue = None
 
     async def __aenter__(self):
         return self
@@ -128,7 +132,7 @@ class BinanceRequester(AbstractMarketRequester):
         super().__init__()
         self._client = AsyncClient(api_key="", api_secret="")
         self.request_queue = TokenBucket(
-            request_limit={timedelta(minutes=1): 400}
+            request_limit={timedelta(minutes=1): 350}
         )
 
     async def _request_with_retries(
@@ -154,7 +158,7 @@ class BinanceRequester(AbstractMarketRequester):
         except exceptions.BinanceAPIException as e:
             # Error code corresponds to TOO_MANY_REQUESTS in Binance
             if e.code == -1003:
-                wait_seconds = 5
+                wait_seconds = 2
                 logger.warning(
                     f"Request could not respond as TOO_MANY_REQUESTS. "
                     f"SYNCHRONOUSLY pausing everything for {wait_seconds} seconds. "
@@ -170,6 +174,13 @@ class BinanceRequester(AbstractMarketRequester):
                     method_name, retry_strategy_state, *args, **kwargs
                 )
             raise
+        except aiohttp.ClientConnectorError as e:
+            logger.warning(f"Request returned {e}."
+                           f" Waiting 10 seconds before proceeding")
+            time.sleep(10)
+            return await self._retry(
+                method_name, retry_strategy_state, *args, **kwargs
+            )
 
 
 class SomeOtherExchangeRequester(AbstractMarketRequester):

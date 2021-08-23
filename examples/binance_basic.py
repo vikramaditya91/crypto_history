@@ -5,6 +5,7 @@ from crypto_history import class_builders, \
 import logging
 from datetime import timedelta
 
+
 async def main():
     init_logger(level=logging.DEBUG)
 
