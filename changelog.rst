@@ -1,6 +1,10 @@
 Changelog
 =========
-1.2b14 (2021-Augg-23)
+1.2b15 (2021-Aug-23)
+--------------------
+ * bugfix/add poetry.lock file
+
+1.2b14 (2021-Aug-23)
 --------------------
  * feature/depandabot added to the repo
 
