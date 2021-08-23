@@ -1,6 +1,6 @@
 Changelog
 =========
-1.2b13 (2021-Augg-23)
+1.2b14 (2021-Augg-23)
 --------------------
  * feature/depandabot added to the repo
 
