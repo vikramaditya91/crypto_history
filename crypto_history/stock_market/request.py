@@ -132,7 +132,7 @@ class BinanceRequester(AbstractMarketRequester):
         super().__init__()
         self._client = AsyncClient(api_key="", api_secret="")
         self.request_queue = TokenBucket(
-            request_limit={timedelta(minutes=1): 400}
+            request_limit={timedelta(minutes=1): 350}
         )
 
     async def _request_with_retries(
