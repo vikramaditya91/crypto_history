@@ -1,7 +1,7 @@
 version: 2
 updates:
-  # Enable version updates for pip (Python)
-  - package-ecosystem: "poetry"
+  # https://github.com/dependabot/dependabot-core/issues/1925
+  - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "weekly"
