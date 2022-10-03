@@ -7,7 +7,7 @@ license = "GNU GPL"
 
 [tool.poetry.dependencies]
 python = "^3.8"
-xarray = ">=0.17,<2022.4"
+xarray = ">=0.17,<2022.10"
 python-binance = "^1.0.12"
 SQLAlchemy = "^1.4.5"
 
